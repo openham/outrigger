@@ -34,7 +34,7 @@
 
 struct io_serial_handle *serial_open(enum serial_handle_type htype, const char *path,
 		unsigned speed, enum serial_data_word_length wlen, enum serial_stop_bits sbits,
-		enum serial_parity parity, enum serial_break_enable brk)
+		enum serial_parity parity, enum serial_flow flow, enum serial_break_enable brk)
 {
 	struct io_serial_handle *ret = NULL;
 	switch(htype) {
@@ -42,7 +42,7 @@ struct io_serial_handle *serial_open(enum serial_handle_type htype, const char *
 			/* H_UNSPECIFIED keeps falling through until it works */
 #ifdef WITH_TERMIOS
 		case SERIAL_H_TERMIOS:
-			ret = serial_termios_open(path, speed, wlen, sbits, parity, brk);
+			ret = serial_termios_open(path, speed, wlen, sbits, parity, flow, brk);
 			if(ret != NULL || htype == SERIAL_H_TERMIOS)
 				return ret;
 			/* Fall-through */

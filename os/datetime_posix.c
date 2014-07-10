@@ -40,4 +40,14 @@ uint64_t ms_ticks(void)
 	return ((uint64_t)(ts.tv_sec*1000))+(ts.tv_nsec/1000000);
 }
 
+void ms_sleep(unsigned msecs)
+{
+	struct timespec	ts = {};
+
+	ts.tv_sec = msecs/1000;
+	ts.tv_nsec = (msecs % 1000) * 1000000;
+	while(nanosleep(&ts, &ts) == -1)
+		;
+}
+
 #endif

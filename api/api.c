@@ -121,9 +121,9 @@ int set_frequency(struct rig *rig, uint64_t freq)
 uint64_t get_frequency(struct rig *rig)
 {
 	if (rig == NULL)
-		return EINVAL;
+		return 0;
 	if (rig->get_frequency == NULL)
-		return ENOTSUP;
+		return 0;
 	return rig->get_frequency(rig->cbdata);
 }
 
@@ -141,9 +141,9 @@ int set_mode(struct rig *rig, enum rig_modes mode)
 enum rig_modes get_mode(struct rig *rig)
 {
 	if (rig == NULL)
-		return EINVAL;
+		return MODE_UNKNOWN;
 	if (rig->get_mode == NULL)
-		return ENOTSUP;
+		return MODE_UNKNOWN;
 	return rig->get_mode(rig->cbdata);
 }
 
@@ -161,9 +161,26 @@ int set_vfo(struct rig *rig, enum vfos vfo)
 enum vfos get_vfo(struct rig *rig)
 {
 	if (rig == NULL)
-		return EINVAL;
+		return VFO_UNKNOWN;
 	if (rig->get_vfo == NULL)
-		return ENOTSUP;
+		return VFO_UNKNOWN;
 	return rig->get_vfo(rig->cbdata);
 }
 
+int set_ptt(struct rig *rig, bool tx)
+{
+	if (rig == NULL)
+		return EINVAL;
+	if (rig->set_ptt == NULL)
+		return ENOTSUP;
+	return rig->set_ptt(rig->cbdata, tx);
+}
+
+int get_ptt(struct rig *rig)
+{
+	if (rig == NULL)
+		return -1;
+	if (rig->get_vfo == NULL)
+		return -1;
+	return rig->get_vfo(rig->cbdata);
+}

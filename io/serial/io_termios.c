@@ -37,12 +37,14 @@
 
 #ifdef WITH_TERMIOS
 
+#include <datetime.h>
+
 #include "serial.h"
 #include "io_termios.h"
 
 struct io_serial_handle *serial_termios_open(const char *path,
 		unsigned speed, enum serial_data_word_length wlen, enum serial_stop_bits sbits,
-		enum serial_parity parity, enum serial_break_enable brk)
+		enum serial_parity parity, enum serial_flow flow, enum serial_break_enable brk)
 {
 	struct termios				tio;
 	struct serial_termios_impl	*hdl;
@@ -71,6 +73,9 @@ struct io_serial_handle *serial_termios_open(const char *path,
 	if (parity < SERIAL_P_FIRST || parity > SERIAL_P_LAST)
 		goto fail;
 	ret->parity = parity;
+	if (flow < SERIAL_F_FIRST || flow > SERIAL_F_LAST)
+		goto fail;
+	ret->flow = flow;
 	if (brk < SERIAL_BREAK_FIRST || brk > SERIAL_BREAK_LAST)
 		goto fail;
 	ret->brk = brk;
@@ -128,6 +133,15 @@ struct io_serial_handle *serial_termios_open(const char *path,
 			break;
 		case SERIAL_P_HIGH:
 		case SERIAL_P_LOW:
+		default:
+			goto fail;
+	}
+	switch (flow) {
+		case SERIAL_F_CTS:
+			tio.c_cflag |= CCTS_OFLOW|CRTS_IFLOW;
+			break;
+		case SERIAL_F_NONE:
+			break;
 		default:
 			goto fail;
 	}
@@ -199,6 +213,16 @@ struct io_serial_handle *serial_termios_open(const char *path,
 		default:
 			goto fail;
 	}
+	switch (tio.c_cflag & (CCTS_OFLOW|CRTS_IFLOW)) {
+		case 0:
+			if (flow != SERIAL_F_NONE)
+				goto fail;
+			break;
+		default:
+			if (flow != SERIAL_F_CTS)
+				goto fail;
+			break;
+	}
 	switch (tio.c_iflag & (IGNBRK|BRKINT)) {
 		case IGNBRK:
 		case (IGNBRK|BRKINT):
@@ -212,6 +236,8 @@ struct io_serial_handle *serial_termios_open(const char *path,
 		default:
 			goto fail;
 	}
+	if (flow == SERIAL_F_CTS)
+		serial_termios_rts(ret, true);
 	return ret;
 
 fail:
@@ -294,23 +320,47 @@ int serial_termios_rts(struct io_serial_handle *hdl, bool val)
 	return 0;
 }
 
-static int serial_termios_select(int fd, bool wr, unsigned timeout)
+static int serial_termios_broken_cts(struct io_serial_handle *hdl, unsigned timeout)
 {
+	bool			cts=false;
+
+	while(timeout) {
+		if (serial_termios_cts(hdl, &cts) != 0)
+			return -1;
+		if (cts)
+			return 1;
+		ms_sleep(1);
+	}
+	return 0;
+}
+
+static int serial_termios_select(struct io_serial_handle *hdl, bool wr, unsigned timeout)
+{
+	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
 	fd_set			fds;
 	struct timeval	tv = {};
+	bool			cts;
 
 	FD_ZERO(&fds);
-	FD_SET(fd, &fds);
+	FD_SET(thdl->fd, &fds);
 	tv.tv_sec = timeout/1000;
 	tv.tv_usec = (timeout % 1000)*1000;
-	switch (select(fd+1, wr?NULL:&fds, wr?&fds:NULL, NULL, &tv)) {
+	switch (select(thdl->fd+1, wr?NULL:&fds, wr?&fds:NULL, NULL, &tv)) {
 		case 0:
 			return 1;
 		case -1:
 			return -1;
 		default:
-			if (FD_ISSET(fd, &fds))
+			if (FD_ISSET(thdl->fd, &fds)) {
+				/* Check for broken CTS flow control */
+				if (wr && hdl->flow == SERIAL_F_CTS) {
+					if (serial_termios_cts(hdl, &cts)==0) {
+						if (!cts)
+							return serial_termios_broken_cts(hdl, timeout);
+					}
+				}
 				return 1;
+			}
 			return 0;
 	}
 }
@@ -319,14 +369,14 @@ int serial_termios_wait_write(struct io_serial_handle *hdl, unsigned timeout)
 {
 	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
 
-	return serial_termios_select(thdl->fd, true, timeout);
+	return serial_termios_select(hdl, true, timeout);
 }
 
 int serial_termios_wait_read(struct io_serial_handle *hdl, unsigned timeout)
 {
 	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
 
-	return serial_termios_select(thdl->fd, false, timeout);
+	return serial_termios_select(hdl, false, timeout);
 }
 
 int serial_termios_write(struct io_serial_handle *hdl, const void *buf, size_t nbytes, unsigned timeout)

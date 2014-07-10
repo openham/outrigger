@@ -71,19 +71,27 @@ enum serial_handle_type {
 	SERIAL_H_LAST = SERIAL_H_WIN32
 };
 
+enum serial_flow {
+	SERIAL_F_FIRST,
+	SERIAL_F_NONE = SERIAL_F_FIRST,
+	SERIAL_F_CTS,
+	SERIAL_F_LAST = SERIAL_F_CTS
+};
+
 struct io_serial_handle {
 	enum serial_data_word_length	word;
 	enum serial_stop_bits			stop;
 	enum serial_parity				parity;
 	enum serial_break_enable		brk;
 	enum serial_handle_type			type;
+	enum serial_flow				flow;
 	unsigned						speed;
 	void							*handle;
 };
 
 struct io_serial_handle *serial_open(enum serial_handle_type htype, const char *path,
 		unsigned speed, enum serial_data_word_length wlen, enum serial_stop_bits sbits,
-		enum serial_parity parity, enum serial_break_enable brk);
+		enum serial_parity parity, enum serial_flow flow, enum serial_break_enable brk);
 int serial_close(struct io_serial_handle *hdl);
 int serial_cts(struct io_serial_handle *hdl, bool *cts);
 int serial_dsr(struct io_serial_handle *hdl, bool *dsr);

@@ -35,7 +35,7 @@ struct serial_termios_impl {
 
 struct io_serial_handle *serial_termios_open(const char *path,
 		unsigned speed, enum serial_data_word_length wlen, enum serial_stop_bits sbits,
-		enum serial_parity parity, enum serial_break_enable brk);
+		enum serial_parity parity, enum serial_flow flow, enum serial_break_enable brk);
 int serial_termios_close(struct io_serial_handle *hdl);
 int serial_termios_cts(struct io_serial_handle *hdl, bool *cts);
 int serial_termios_dsr(struct io_serial_handle *hdl, bool *dsr);

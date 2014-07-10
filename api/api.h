@@ -27,6 +27,7 @@
 #define API_H
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 struct _dictionary_;
 
@@ -59,12 +60,14 @@ struct rig {
 
 	/* Callbacks */
 	int (*close)(void *cbdata);
-	int (*set_frequency)(void *cbdata, uint64_t freq);
+	int (*set_frequency)(void *cbdata, uint64_t);
 	uint64_t (*get_frequency)(void *cbdata);
-	int (*set_mode)(void *cbdata, enum rig_modes mode);
+	int (*set_mode)(void *cbdata, enum rig_modes);
 	enum rig_modes (*get_mode)(void *cbdata);
-	int (*set_vfo)(void *cbdata, enum vfos vfo);
+	int (*set_vfo)(void *cbdata, enum vfos);
 	enum vfos (*get_vfo)(void *cbdata);
+	int (*set_ptt)(void *cbdata, bool);
+	int (*get_ptt)(void *cbdata);
 
 	void		*cbdata;
 };
@@ -119,17 +122,32 @@ int set_mode(struct rig *rig, enum rig_modes mode);
 enum rig_modes get_mode(struct rig *rig);
 
 /*
- * Reads the currently selected VFO
- * 
- * Returns VFO_UNKNOWN on failure
- */
-int set_vfo(struct rig *rig, enum vfos vfo);
-
-/*
  * Sets the current VFO
  * 
  * return 0 on success or an errno value on failure
  */
+int set_vfo(struct rig *rig, enum vfos vfo);
+
+/*
+ * Reads the currently selected VFO
+ * 
+ * Returns VFO_UNKNOWN on failure
+ */
 enum vfos get_vfo(struct rig *rig);
+
+/*
+ * Sets the current PTT status
+ * 
+ * return 0 on success or an errno value on failure
+ */
+int set_ptt(struct rig *rig, bool tx);
+
+/*
+ * Reads 1 if rig is currently transmitting, 0 if it is not,
+ * and -1 on failure
+ * 
+ * Returns VFO_UNKNOWN on failure
+ */
+int get_ptt(struct rig *rig);
 
 #endif

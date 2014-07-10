@@ -29,5 +29,6 @@
 #include <inttypes.h>
 
 uint64_t ms_ticks(void);
+void ms_sleep(unsigned msecs);
 
 #endif

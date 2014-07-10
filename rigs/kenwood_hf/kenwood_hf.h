@@ -103,6 +103,8 @@ struct kenwood_hf {
 	unsigned			char_timeout;		// Max time to wait in between chars of a response.
 	unsigned			send_timeout;		// Max time to wait in between chars while sending.
 	unsigned			if_lifetime;		// Time in milliseconds to keep and IF response cached.
+	unsigned			inter_cmd_delay;	// Minimum time between commands
+	uint64_t			last_cmd_tick;
 	char				read_cmds[KW_HF_CMD_COUNT/8+1];
 	char				set_cmds[KW_HF_CMD_COUNT/8+1];
 	pthread_mutex_t		cache_mtx;
@@ -125,5 +127,9 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq);
 uint64_t kenwood_hf_get_frequency(void *cbdata);
 int kenwood_hf_set_mode(void *khf, enum rig_modes mode);
 enum rig_modes kenwood_hf_get_mode(void *khf);
+int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo);
+enum vfos kenwood_hf_get_vfo(void *cbdata);
+int kenwood_hf_set_ptt(void *cbdata, bool tx);
+int kenwood_hf_get_ptt(void *cbdata);
 
 #endif

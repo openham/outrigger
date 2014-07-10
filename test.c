@@ -42,7 +42,14 @@ int main(int argc, char **argv)
 		fprintf(stderr, "init_rig() failed!\n");
 		return 1;
 	}
+	printf("Set VFO: %d\n", set_vfo(rig, VFO_A));
+	printf("Get VFO: %d\n", get_vfo(rig));
 	printf("Set Freq: %d\n", set_frequency(rig, 28400000));
+	printf("Get Freq: %"PRIu64"\n", get_frequency(rig));
 	printf("Set Mode: %d\n", set_mode(rig, MODE_LSB));
+	printf("Get Mode: %d\n", get_mode(rig));
+	printf("Set PTT: %d\n", set_ptt(rig, true));
+	printf("Get PTT: %d\n", get_ptt(rig));
+	printf("Set PTT: %d\n", set_ptt(rig, false));
 	printf("Close: %d\n", close_rig(rig));
 }

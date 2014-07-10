@@ -41,7 +41,7 @@ static int ts940s_close(void *cbdata)
 
 	if (khf==NULL)
 		return EINVAL;
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LO, 0);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LO);
 	if (resp)
 		free(resp);
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
@@ -65,7 +65,15 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 
 	if (ret == NULL)
 		return NULL;
-fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
+
+	// Fill in serial port defaults
+	set_default(d, section, "type", "serial");
+	set_default(d, section, "speed", "4800");
+	set_default(d, section, "databits", "8");
+	set_default(d, section, "stopbits", "2");
+	set_default(d, section, "parity", "None");
+	set_default(d, section, "flow", "CTSRTS");
+
 	khf = kenwood_hf_new(d, section);
 	if (khf == NULL) {
 		free(ret);
@@ -79,6 +87,10 @@ fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 	ret->get_frequency = kenwood_hf_get_frequency;
 	ret->set_mode = kenwood_hf_set_mode;
 	ret->get_mode = kenwood_hf_get_mode;
+	ret->set_vfo = kenwood_hf_set_vfo;
+	ret->get_vfo = kenwood_hf_get_vfo;
+	ret->set_ptt = kenwood_hf_set_ptt;
+	ret->get_ptt = kenwood_hf_get_ptt;
 	ret->cbdata = khf;
 	kenwood_hf_setbits(khf->set_cmds, KW_HF_CMD_AI, KW_HF_CMD_AT1,
 			KW_HF_CMD_DN, KW_HF_CMD_UP, KW_HF_CMD_DS, KW_HF_CMD_FA,
@@ -88,27 +100,21 @@ fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 			KW_HF_CMD_RT, KW_HF_CMD_RX, KW_HF_CMD_TX, KW_HF_CMD_SC,
 			KW_HF_CMD_SH, KW_HF_CMD_SL, KW_HF_CMD_SP, KW_HF_CMD_VB,
 			KW_HF_CMD_VR, KW_HF_CMD_XT, KW_HF_TERMINATOR);
-	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_DS, KW_HF_CMD_FA, 
+	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_AI, KW_HF_CMD_DS, KW_HF_CMD_FA, 
 			KW_HF_CMD_FB, KW_HF_CMD_HD, KW_HF_CMD_ID, KW_HF_CMD_IF,
 			KW_HF_CMD_LK, KW_HF_CMD_MR, KW_HF_CMD_MS, KW_HF_CMD_SH,
 			KW_HF_CMD_SL, KW_HF_CMD_VB, KW_HF_TERMINATOR);
 
-	// Fill in serial port defaults
-	set_default(d, section, "type", "serial");
-	set_default(d, section, "speed", "4800");
-	set_default(d, section, "databits", "8");
-	set_default(d, section, "stopbits", "2");
-	set_default(d, section, "parity", "None");
-
 	khf->handle=io_start_from_dictionary(d, section, IO_H_SERIAL, kenwood_hf_read_response, kenwood_hf_handle_extra, khf);
 	if (khf->handle == NULL) {
-fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 		free(khf);
 		free(ret);
 		return NULL;
 	}
+	// Send an IF command to synchronize... may fail.
+	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
 	// Lock the front panel and enable AI mode
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 1);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
 	if (resp)
 		free(resp);
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);

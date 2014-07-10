@@ -186,6 +186,7 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 			enum serial_data_word_length	wlen;
 			enum serial_stop_bits			sbits;
 			enum serial_parity				parity;
+			enum serial_flow				flow;
 
 			port = getstring(d, section, "port", NULL);
 			if (port == NULL)
@@ -240,8 +241,19 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 				default:
 					return NULL;
 			}
+			value = getstring(d, section, "flow", "N");
+			switch (toupper(value[0])) {
+				case 'N':
+					flow = SERIAL_F_NONE;
+					break;
+				case 'C':
+					flow = SERIAL_F_CTS;
+					break;
+				default:
+					return NULL;
+			}
 
-			serial = serial_open(SERIAL_H_UNSPECIFIED, port, speed, wlen, sbits, parity, SERIAL_BREAK_DISABLED);
+			serial = serial_open(SERIAL_H_UNSPECIFIED, port, speed, wlen, sbits, parity, flow, SERIAL_BREAK_DISABLED);
 			if (serial == NULL)
 				return NULL;
 			ret = io_start(htype, serial, rcb, acb, cbdata);

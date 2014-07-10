@@ -149,7 +149,7 @@ enum khf_model {
 struct khf_command khf_cmd[] = {
 	{ "AI", "AI", KW_HF_CMD_AI, 
 		1, {KHF_PARAM_SW},
-		0, {},
+		1, {KHF_PARAM_SW},
 		0
 	},
 	{ "AT1", "AT", KW_HF_CMD_AT1, 
@@ -426,9 +426,14 @@ fail:
  */
 static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 {
+	uint64_t	now = ms_ticks();
+	
 	if (khf == NULL)
 		return -1;
 
+	if(now <= khf->last_cmd_tick + khf->inter_cmd_delay)
+		ms_sleep(khf->last_cmd_tick + khf->inter_cmd_delay - now);
+	khf->last_cmd_tick = ms_ticks();
 	return io_write(khf->handle, cmd, wlen, khf->char_timeout);
 }
 
@@ -687,6 +692,9 @@ void kenwood_hf_handle_extra(void *handle, struct io_response *resp)
 	struct kenwood_hf	*khf = (struct kenwood_hf *)handle;
 	struct kenwood_if	*rif;
 
+	if (resp==NULL)
+		return;
+
 	if (resp->len >= 2) {
 		if (resp->msg[0] == 'I' && resp->msg[1] == 'F') {
 			rif = kenwood_parse_if(resp);
@@ -708,6 +716,9 @@ static void kenwood_update_if(struct kenwood_hf *khf, bool lock)
 	struct io_response	*resp;
 	struct kenwood_if	*rif;
 
+	/*
+	 * We shouldn't really need to do this ever because of AI mode
+	 */
 	if (khf == NULL || (khf->last_if_tick != 0 && khf->last_if_tick + khf->if_lifetime >= now)) {
 		if (lock)
 			pthread_mutex_lock(&khf->cache_mtx);
@@ -752,6 +763,7 @@ struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
 	khf->char_timeout = getint(d, section, "char_timeout", 500);
 	khf->send_timeout = getint(d, section, "send_timeout", 500);
 	khf->if_lifetime = getint(d, section, "cache_lifetime", 1000);
+	khf->inter_cmd_delay = getint(d, section, "inter_cmd_delay", 0);
 
 	return khf;
 }
@@ -780,7 +792,6 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 {
 	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
 	struct io_response			*resp;
-	struct kenwood_if			*rif;
 	enum kenwood_hf_commands	cmd;
 	enum khf_function			func;
 
@@ -795,7 +806,6 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	switch(khf->last_if.function) {
 		case FUNCTION_MEMORY:
 		case FUNCTION_COM:
-			free(rif);
 			return EACCES;
 		case FUNCTION_VFO_A:
 			cmd = KW_HF_CMD_FA;
@@ -804,7 +814,6 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 			cmd = KW_HF_CMD_FB;
 			break;
 	}
-	free (rif);
 	resp = kenwood_hf_command(khf, true, cmd, freq);
 	if (resp == NULL)
 		return ENODEV;
@@ -896,7 +905,7 @@ enum rig_modes kenwood_hf_get_mode(void *cbdata)
 	}
 }
 
-int kenwood_hf_set_vfo(void *cbdata, enum rig_modes rmode)
+int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo)
 {
 	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
 	enum khf_function	func;
@@ -905,7 +914,7 @@ int kenwood_hf_set_vfo(void *cbdata, enum rig_modes rmode)
 	if (khf == NULL)
 		return EINVAL;
 
-	switch(rmode) {
+	switch(vfo) {
 		case VFO_A:
 			func = FUNCTION_VFO_A;
 			break;
@@ -928,7 +937,7 @@ int kenwood_hf_set_vfo(void *cbdata, enum rig_modes rmode)
 	return 0;
 }
 
-int kenwood_hf_get_vfo(void *cbdata, enum vfos vfo)
+enum vfos kenwood_hf_get_vfo(void *cbdata)
 {
 	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
 	enum khf_function	cvfo;
@@ -949,3 +958,42 @@ int kenwood_hf_get_vfo(void *cbdata, enum vfos vfo)
 			return VFO_UNKNOWN;
 	}
 }
+
+int kenwood_hf_set_ptt(void *cbdata, bool tx)
+{
+	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
+	struct io_response	*resp;
+
+	if (khf == NULL)
+		return EINVAL;
+	if (tx)
+		resp = kenwood_hf_command(khf, true, KW_HF_CMD_TX);
+	else
+		resp = kenwood_hf_command(khf, true, KW_HF_CMD_RX);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	return 0;
+}
+
+int kenwood_hf_get_ptt(void *cbdata)
+{
+	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
+	enum khf_sw			ret;
+
+	if (khf == NULL)
+		return -1;
+
+	kenwood_update_if(khf, true);
+	ret = khf->last_if.tx;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	switch (ret) {
+		case SW_ON:
+			return 1;
+		case SW_OFF:
+			return 0;
+		default:
+			return -1;
+	}
+}
+
