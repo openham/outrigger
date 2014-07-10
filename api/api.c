@@ -53,6 +53,34 @@ int set_default(struct _dictionary_ *d, const char *section, const char *key, co
 	return ret;
 }
 
+int getint(struct _dictionary_ *d, const char *section, const char *key, int dflt)
+{
+	char	*skey;
+	int		ret=0;
+
+	if (section == NULL || key == NULL)
+		return -1;
+	if (asprintf(&skey, "%s:%s", section, key) < 0)
+		return -1;
+	ret = iniparser_getint(d, skey, dflt);
+	free(skey);
+	return ret;
+}
+
+char *getstring(struct _dictionary_ *d, const char *section, const char *key, char *dflt)
+{
+	char	*skey;
+	char	*ret=0;
+
+	if (section == NULL || key == NULL)
+		return NULL;
+	if (asprintf(&skey, "%s:%s", section, key) < 0)
+		return NULL;
+	ret = iniparser_getstring(d, skey, dflt);
+	free(skey);
+	return ret;
+}
+
 struct rig *init_rig(struct _dictionary_ *d, const char *section)
 {
 	int			i;
@@ -118,3 +146,24 @@ enum rig_modes get_mode(struct rig *rig)
 		return ENOTSUP;
 	return rig->get_mode(rig->cbdata);
 }
+
+int set_vfo(struct rig *rig, enum vfos vfo)
+{
+	if (rig == NULL)
+		return EINVAL;
+	if (rig->set_vfo == NULL)
+		return ENOTSUP;
+	if ((rig->supported_vfos & vfo) == 0)
+		return ENOTSUP;
+	return rig->set_vfo(rig->cbdata, vfo);
+}
+
+enum vfos get_vfo(struct rig *rig)
+{
+	if (rig == NULL)
+		return EINVAL;
+	if (rig->get_vfo == NULL)
+		return ENOTSUP;
+	return rig->get_vfo(rig->cbdata);
+}
+

@@ -6,10 +6,11 @@ find_package(Threads REQUIRED)
 
 include_directories(
 	api
+	iniparser/src
 	io
 	io/serial
+	os
 	rigs/kenwood_hf
-	iniparser/src
 )
 
 set(SOURCES
@@ -24,12 +25,20 @@ set(SOURCES
 )
 
 find_path(TERMIOS_PATH termios.h)
+find_path(UNISTD_PATH unistd.h)
 
 if(CMAKE_USE_WIN32_THREADS_INIT)
 endif()
 
 if(TERMIOS_PATH)
 	list(APPEND SOURCES io/serial/io_termios.c)
+endif()
+
+if(UNISTD_PATH)
+	check_symbol_exists(_POSIX_TIMERS ${UNISTD_PATH}/unistd.h HAS_POSIX_TIMERS)
+	if(HAS_POSIX_TIMERS)
+		list(APPEND SOURCES os/datetime_posix.c)
+	endif()
 endif()
 
 add_executable(outrigger ${SOURCES})

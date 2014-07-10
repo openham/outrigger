@@ -36,19 +36,37 @@
 static int ts940s_close(void *cbdata)
 {
 	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
+	struct io_response	*resp;
+	int					i, ret;
 
-	return io_end(khf->handle);
+	if (khf==NULL)
+		return EINVAL;
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LO, 0);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
+	if (resp)
+		free(resp);
+
+	ret = io_end(khf->handle);
+	kenwood_hf_free(khf);
+	return ret;
 }
 
 struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 {
 	struct rig				*ret = (struct rig *)calloc(1, sizeof(struct rig));
 	struct kenwood_hf		*khf;
+	struct io_response		*resp;
 	char					*key;
 
 	if (ret == NULL)
 		return NULL;
-	khf = (struct kenwood_hf *)calloc(1, sizeof(struct kenwood_hf));
+fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
+	khf = kenwood_hf_new(d, section);
 	if (khf == NULL) {
 		free(ret);
 		return NULL;
@@ -62,9 +80,6 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	ret->set_mode = kenwood_hf_set_mode;
 	ret->get_mode = kenwood_hf_get_mode;
 	ret->cbdata = khf;
-	khf->response_timeout = 1000;
-	khf->char_timeout = 100;
-	khf->send_timeout = 500;
 	kenwood_hf_setbits(khf->set_cmds, KW_HF_CMD_AI, KW_HF_CMD_AT1,
 			KW_HF_CMD_DN, KW_HF_CMD_UP, KW_HF_CMD_DS, KW_HF_CMD_FA,
 			KW_HF_CMD_FB, KW_HF_CMD_FN, KW_HF_CMD_HD, KW_HF_CMD_LK,
@@ -87,10 +102,18 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 
 	khf->handle=io_start_from_dictionary(d, section, IO_H_SERIAL, kenwood_hf_read_response, kenwood_hf_handle_extra, khf);
 	if (khf->handle == NULL) {
+fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 		free(khf);
 		free(ret);
 		return NULL;
 	}
+	// Lock the front panel and enable AI mode
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 1);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
+	if (resp)
+		free(resp);
 
 	return ret;
 }

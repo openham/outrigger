@@ -63,6 +63,8 @@ struct rig {
 	uint64_t (*get_frequency)(void *cbdata);
 	int (*set_mode)(void *cbdata, enum rig_modes mode);
 	enum rig_modes (*get_mode)(void *cbdata);
+	int (*set_vfo)(void *cbdata, enum vfos vfo);
+	enum vfos (*get_vfo)(void *cbdata);
 
 	void		*cbdata;
 };
@@ -73,6 +75,8 @@ struct supported_rig {
 };
 
 int set_default(struct _dictionary_ *d, const char *section, const char *key, const char *dflt);
+int getint(struct _dictionary_ *d, const char *section, const char *key, int dflt);
+char *getstring(struct _dictionary_ *d, const char *section, const char *key, char *dflt);
 
 /*
  * Initializes the rig defined in the specified section of the
@@ -113,5 +117,19 @@ int set_mode(struct rig *rig, enum rig_modes mode);
  * Returns MODE_UNKNOWN on failure
  */
 enum rig_modes get_mode(struct rig *rig);
+
+/*
+ * Reads the currently selected VFO
+ * 
+ * Returns VFO_UNKNOWN on failure
+ */
+int set_vfo(struct rig *rig, enum vfos vfo);
+
+/*
+ * Sets the current VFO
+ * 
+ * return 0 on success or an errno value on failure
+ */
+enum vfos get_vfo(struct rig *rig);
 
 #endif

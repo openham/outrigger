@@ -26,6 +26,9 @@
 #ifndef KENWOOD_HF_H
 #define KENWOOD_HF_H
 
+#include <inttypes.h>
+#include <stdbool.h>
+
 /*
  * These are the commands available for both reading and setting.
  * 
@@ -76,13 +79,36 @@ enum kenwood_hf_commands {
 	KW_HF_TERMINATOR = KW_HF_CMD_COUNT
 };
 
+struct kenwood_if {
+	uint64_t			freq;
+	unsigned			step;
+	int					rit;
+	unsigned			rit_on;
+	unsigned			xit_on;
+	unsigned			bank;
+	unsigned			channel;
+	unsigned			tx;
+	unsigned			mode;
+	unsigned			function;
+	unsigned			scan;
+	unsigned			split;
+	unsigned			tone;
+	unsigned			tone_freq;
+	unsigned			offset;
+};
+
 struct kenwood_hf {
-	struct io_handle *handle;
-	unsigned		response_timeout;	// Max time to wait in between responses.
-	unsigned		char_timeout;		// Max time to wait in between chars of a response.
-	unsigned		send_timeout;		// Max time to wait in between chars while sending.
-	char			read_cmds[KW_HF_CMD_COUNT/8+1];
-	char			set_cmds[KW_HF_CMD_COUNT/8+1];
+	struct io_handle 	*handle;
+	unsigned			response_timeout;	// Max time to wait in between responses.
+	unsigned			char_timeout;		// Max time to wait in between chars of a response.
+	unsigned			send_timeout;		// Max time to wait in between chars while sending.
+	unsigned			if_lifetime;		// Time in milliseconds to keep and IF response cached.
+	char				read_cmds[KW_HF_CMD_COUNT/8+1];
+	char				set_cmds[KW_HF_CMD_COUNT/8+1];
+	pthread_mutex_t		cache_mtx;
+	struct kenwood_if	last_if;
+	uint64_t			last_if_tick;
+	bool				hands_on;
 };
 
 #define kenwood_hf_cmd_set(hf, cmd)		((hf->set_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
@@ -91,6 +117,9 @@ struct kenwood_hf {
 struct io_response *kenwood_hf_read_response(void *cbdata);
 void kenwood_hf_handle_extra(void *handle, struct io_response *resp);
 void kenwood_hf_setbits(char *array, ...);
+struct io_response *kenwood_hf_command(struct kenwood_hf *khf, bool set, enum kenwood_hf_commands cmd, ...);
+void kenwood_hf_free(struct kenwood_hf *khf);
+struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section);
 
 int kenwood_hf_set_frequency(void *cbdata, uint64_t freq);
 uint64_t kenwood_hf_get_frequency(void *cbdata);

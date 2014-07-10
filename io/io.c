@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <api.h>
 #include <iniparser.h>
 
 #include "io.h"
@@ -160,7 +161,6 @@ struct io_handle *io_start(enum io_handle_type htype, void *handle, io_read_call
 struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, enum io_handle_type htype, io_read_callback rcb, io_async_callback acb, void *cbdata)
 {
 	struct io_handle 		*ret;
-	char					*key;
 	char					*value;
 	int						i;
 
@@ -168,11 +168,8 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 		return NULL;
 
 	if (htype == IO_H_UNKNOWN) {
-		if (asprintf(&key, "%s:type", section) < 0)
-			return NULL;
-		value = iniparser_getstring(d, key, NULL);
-		free(key);
-		if (key == NULL)
+		value = getstring(d, section, "type", NULL);
+		if (value == NULL)
 			return NULL;
 		if (strcmp(value, "serial")==0)
 			htype = IO_H_SERIAL;
@@ -190,22 +187,12 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 			enum serial_stop_bits			sbits;
 			enum serial_parity				parity;
 
-			if (asprintf(&key, "%s:port", section) < 0)
-				return NULL;
-			port = iniparser_getstring(d, key, NULL);
-			free(key);
+			port = getstring(d, section, "port", NULL);
 			if (port == NULL)
 				return NULL;
 
-			if (asprintf(&key, "%s:speed", section) < 0)
-				return NULL;
-			speed = iniparser_getint(d, key, 9600);
-			free(key);
-
-			if (asprintf(&key, "%s:databits", section) < 0)
-				return NULL;
-			i = iniparser_getint(d, key, 8);
-			free(key);
+			speed = getint(d, section, "speed", 9600);
+			i = getint(d, section, "databits", 8);
 			switch (i) {
 				case 8:
 					wlen = SERIAL_DWL_8;
@@ -222,11 +209,7 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 				default:
 					return NULL;
 			}
-
-			if (asprintf(&key, "%s:stopbits", section) < 0)
-				return NULL;
-			i = iniparser_getint(d, key, 8);
-			free(key);
+			i = getint(d, section, "stopbits", 8);
 			switch (i) {
 				case 1:
 					sbits = SERIAL_SB_1;
@@ -237,11 +220,7 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 				default:
 					return NULL;
 			}
-
-			if (asprintf(&key, "%s:parity", section) < 0)
-				return NULL;
-			value = iniparser_getstring(d, key, "N");
-			free(key);
+			value = getstring(d, section, "parity", "N");
 			switch (toupper(value[0])) {
 				case 'N':
 					parity = SERIAL_P_NONE;
