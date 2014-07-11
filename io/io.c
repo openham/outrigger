@@ -119,7 +119,8 @@ struct io_response *io_get_response(struct io_handle *hdl, const char *match, si
 			resp = NULL;
 			sem_post(&hdl->ack_semaphore);
 		}
-		break;
+		else
+			break;
 	}
 	
 	/* 
@@ -312,12 +313,17 @@ int io_wait_write(struct io_handle *hdl, unsigned timeout)
 
 int io_write(struct io_handle *hdl, const void *buf, size_t nbytes, unsigned timeout)
 {
+	int ret;
+	
 	if (hdl == NULL || buf == NULL || nbytes == 0)
 		return -1;
 
 	switch(hdl->type) {
 		case IO_H_SERIAL:
-			return serial_write(hdl->handle.serial, buf, nbytes, timeout);
+			ret = serial_write(hdl->handle.serial, buf, nbytes, timeout);
+			if (ret)
+				return ret;
+			return serial_drain(hdl->handle.serial);
 		default:
 			return -1;
 	}

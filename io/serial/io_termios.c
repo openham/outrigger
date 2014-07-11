@@ -436,4 +436,11 @@ int serial_termios_pending(struct io_serial_handle *hdl)
 	return avail;
 }
 
+int serial_termios_drain(struct io_serial_handle *hdl)
+{
+	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
+
+	return ioctl(thdl->fd, TIOCDRAIN);
+}
+
 #endif

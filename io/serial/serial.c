@@ -216,3 +216,18 @@ int serial_pending(struct io_serial_handle *hdl)
 			return -1;
 	}
 }
+
+int serial_drain(struct io_serial_handle *hdl)
+{
+	if (hdl == NULL)
+		return -1;
+
+	switch(hdl->type) {
+#ifdef WITH_TERMIOS
+		case SERIAL_H_TERMIOS:
+			return serial_termios_drain(hdl);
+#endif
+		default:
+			return -1;
+	}
+}

@@ -103,5 +103,6 @@ int serial_wait_read(struct io_serial_handle *hdl, unsigned timeout);
 int serial_write(struct io_serial_handle *hdl, const void *buf, size_t nbytes, unsigned timeout);
 int serial_read(struct io_serial_handle *hdl, void *buf, size_t nbytes, unsigned timeout);
 int serial_pending(struct io_serial_handle *hdl);
+int serial_drain(struct io_serial_handle *hdl);
 
 #endif

@@ -47,6 +47,7 @@ int serial_termios_wait_read(struct io_serial_handle *hdl, unsigned timeout);
 int serial_termios_write(struct io_serial_handle *hdl, const void *buf, size_t nbytes, unsigned timeout);
 int serial_termios_read(struct io_serial_handle *hdl, void *buf, size_t nbytes, unsigned timeout);
 int serial_termios_pending(struct io_serial_handle *hdl);
+int serial_termios_drain(struct io_serial_handle *hdl);
 
 #endif
 
