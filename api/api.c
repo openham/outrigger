@@ -115,7 +115,18 @@ int set_frequency(struct rig *rig, uint64_t freq)
 {
 	if (rig == NULL)
 		return EINVAL;
+	if (rig->set_frequency == NULL)
+		return ENOTSUP;
 	return rig->set_frequency(rig->cbdata, freq);
+}
+
+int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx)
+{
+	if (rig == NULL)
+		return EINVAL;
+	if (rig->set_split_frequency == NULL)
+		return ENOTSUP;
+	return rig->set_split_frequency(rig->cbdata, freq_rx, freq_tx);
 }
 
 uint64_t get_frequency(struct rig *rig)
@@ -125,6 +136,15 @@ uint64_t get_frequency(struct rig *rig)
 	if (rig->get_frequency == NULL)
 		return 0;
 	return rig->get_frequency(rig->cbdata);
+}
+
+int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx)
+{
+	if (rig == NULL || freq_rx == NULL || freq_tx == NULL)
+		return EINVAL;
+	if (rig->get_split_frequency == NULL)
+		return ENOTSUP;
+	return rig->get_split_frequency(rig->cbdata, freq_rx, freq_tx);
 }
 
 int set_mode(struct rig *rig, enum rig_modes mode)

@@ -104,6 +104,8 @@ struct kenwood_hf {
 	unsigned			send_timeout;		// Max time to wait in between chars while sending.
 	unsigned			if_lifetime;		// Time in milliseconds to keep and IF response cached.
 	unsigned			inter_cmd_delay;	// Minimum time between commands
+	unsigned			additional_intercmd_delay;	// Additional one-shot delay...
+	unsigned			set_cmd_delays[KW_HF_CMD_COUNT];	// Additional delay for each command.
 	uint64_t			last_cmd_tick;
 	char				read_cmds[KW_HF_CMD_COUNT/8+1];
 	char				set_cmds[KW_HF_CMD_COUNT/8+1];
@@ -116,15 +118,19 @@ struct kenwood_hf {
 #define kenwood_hf_cmd_set(hf, cmd)		((hf->set_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 #define kenwood_hf_cmd_read(hf, cmd)	((hf->read_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 
+void kenwood_hf_init(struct kenwood_hf *khf);
 struct io_response *kenwood_hf_read_response(void *cbdata);
 void kenwood_hf_handle_extra(void *handle, struct io_response *resp);
 void kenwood_hf_setbits(char *array, ...);
+void kenwood_hf_set_cmd_delays(struct kenwood_hf *khf, ...);
 struct io_response *kenwood_hf_command(struct kenwood_hf *khf, bool set, enum kenwood_hf_commands cmd, ...);
 void kenwood_hf_free(struct kenwood_hf *khf);
 struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section);
 
 int kenwood_hf_set_frequency(void *cbdata, uint64_t freq);
+int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx);
 uint64_t kenwood_hf_get_frequency(void *cbdata);
+int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq);
 int kenwood_hf_set_mode(void *khf, enum rig_modes mode);
 enum rig_modes kenwood_hf_get_mode(void *khf);
 int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo);

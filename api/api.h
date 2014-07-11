@@ -61,7 +61,9 @@ struct rig {
 	/* Callbacks */
 	int (*close)(void *cbdata);
 	int (*set_frequency)(void *cbdata, uint64_t);
+	int (*set_split_frequency)(void *cbdata, uint64_t, uint64_t);
 	uint64_t (*get_frequency)(void *cbdata);
+	int (*get_split_frequency)(void *cbdata, uint64_t*, uint64_t *);
 	int (*set_mode)(void *cbdata, enum rig_modes);
 	enum rig_modes (*get_mode)(void *cbdata);
 	int (*set_vfo)(void *cbdata, enum vfos);
@@ -95,10 +97,20 @@ int close_rig(struct rig *rig);
 
 /*
  * Sets the frequency of the currently selected VFO to freq.
+ * If split is enabled, disables it.
  * 
  * return 0 on success or an errno value on failure
  */
 int set_frequency(struct rig *rig, uint64_t freq);
+
+/*
+ * Sets the frequency of the currently selected VFO to freq_tx,
+ * some unspecified "other" VFO to freq_rx, and enables split mode
+ * This may entail using an offset instead of two VFOs.
+ * 
+ * return 0 on success or an errno value on failure
+ */
+int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx);
 
 /*
  * Reads the currently displayed frequency of the currently selected VFO
@@ -106,6 +118,15 @@ int set_frequency(struct rig *rig, uint64_t freq);
  * Returns 0 on failure
  */
 uint64_t get_frequency(struct rig *rig);
+
+/*
+ * Reads the current RX frequency into freq_rx, the current TX frequency
+ * into freq_tx, and returns 0.
+ * 
+ * Returns a non-zero errno on failure.
+ * This function will fail if the rig is not operating split.
+ */
+int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx);
 
 /*
  * Sets the current mode.

@@ -47,7 +47,7 @@ static int ts940s_close(void *cbdata)
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
 	if (resp)
 		free(resp);
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 0);
 	if (resp)
 		free(resp);
 
@@ -85,6 +85,8 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	ret->close = ts940s_close;
 	ret->set_frequency = kenwood_hf_set_frequency;
 	ret->get_frequency = kenwood_hf_get_frequency;
+	ret->set_split_frequency = kenwood_hf_set_split_frequency;
+	ret->get_split_frequency = kenwood_hf_get_split_frequency;
 	ret->set_mode = kenwood_hf_set_mode;
 	ret->get_mode = kenwood_hf_get_mode;
 	ret->set_vfo = kenwood_hf_set_vfo;
@@ -111,15 +113,11 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 		free(ret);
 		return NULL;
 	}
-	// Send an IF command to synchronize... may fail.
-	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
-	// Lock the front panel and enable AI mode
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
-	if (resp)
-		free(resp);
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
-	if (resp)
-		free(resp);
-
+	kenwood_hf_set_cmd_delays(khf, 
+			KW_HF_CMD_FA, 200,
+			KW_HF_CMD_FB, 200,
+			KW_HF_CMD_SP, 200,
+	KW_HF_TERMINATOR);
+	kenwood_hf_init(khf);
 	return ret;
 }

@@ -78,11 +78,6 @@ enum khf_function {
 	FUNCTION_COM
 };
 
-enum khf_split {
-	SPLIT_RX,
-	SPLIT_TX
-};
-
 enum khf_txrx {
 	KHF_RECEIVE,
 	KHF_TRANSMIT
@@ -431,9 +426,10 @@ static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 	if (khf == NULL)
 		return -1;
 
-	if(now <= khf->last_cmd_tick + khf->inter_cmd_delay)
-		ms_sleep(khf->last_cmd_tick + khf->inter_cmd_delay - now);
+	if(now <= khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay)
+		ms_sleep(khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay - now);
 	khf->last_cmd_tick = ms_ticks();
+	khf->additional_intercmd_delay = 0;
 	return io_write(khf->handle, cmd, wlen, khf->char_timeout);
 }
 
@@ -656,6 +652,7 @@ struct io_response *kenwood_hf_command(struct kenwood_hf *khf, bool set, enum ke
 	if (set) {
 		struct io_response *resp = (struct io_response *)malloc(offsetof(struct io_response, msg));
 		resp->len = kenwood_send(khf, cmdstr, len);
+		khf->additional_intercmd_delay = khf->set_cmd_delays[cmd];
 		return resp;
 	}
 	return kenwood_command_response(khf, cmdinfo, cmdstr, len);
@@ -768,6 +765,23 @@ struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
 	return khf;
 }
 
+void kenwood_hf_init(struct kenwood_hf *khf)
+{
+	struct io_response			*resp;
+
+	// Send an IF command to synchronize... may fail.
+	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
+	// Lock the front panel and enable AI mode
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
+	if (resp)
+		free(resp);
+	// Get the initial state...
+	kenwood_update_if(khf, false);
+}
+
 void kenwood_hf_free(struct kenwood_hf *khf)
 {
 	if (khf == NULL)
@@ -788,12 +802,28 @@ void kenwood_hf_setbits(char *array, ...)
 	va_end(bits);
 }
 
+void kenwood_hf_set_cmd_delays(struct kenwood_hf *khf, ...)
+{
+	va_list						cmds;
+	enum kenwood_hf_commands	cmd;
+	int							delay;
+
+	va_start(cmds, khf);
+	for (cmd = va_arg(cmds, int); cmd != KW_HF_TERMINATOR; cmd = va_arg(cmds, int)) {
+		delay = va_arg(cmds, int);
+		if (delay >= 0)
+			khf->set_cmd_delays[cmd] = delay;
+	}
+	va_end(cmds);
+}
+
 int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 {
 	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
 	struct io_response			*resp;
 	enum kenwood_hf_commands	cmd;
 	enum khf_function			func;
+	enum khf_sw					split;
 
 	if (khf == NULL)
 		return EINVAL;
@@ -801,9 +831,10 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	// First, get the current VFO.
 	kenwood_update_if(khf, true);
 	func = khf->last_if.function;
+	split = khf->last_if.split;
 	pthread_mutex_unlock(&khf->cache_mtx);
 	// TODO: Ensure we're not changing bands too
-	switch(khf->last_if.function) {
+	switch(func) {
 		case FUNCTION_MEMORY:
 		case FUNCTION_COM:
 			return EACCES;
@@ -817,6 +848,68 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	resp = kenwood_hf_command(khf, true, cmd, freq);
 	if (resp == NULL)
 		return ENODEV;
+	pthread_mutex_lock(&khf->cache_mtx);
+	khf->last_if.freq = freq;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	free(resp);
+	if (split == SW_ON) {
+		resp = kenwood_hf_command(khf, true, KW_HF_CMD_SP, SW_OFF);
+		if (resp == NULL)
+			return EINTR;
+		free(resp);
+		pthread_mutex_lock(&khf->cache_mtx);
+		khf->last_if.split = SW_OFF;
+		pthread_mutex_unlock(&khf->cache_mtx);
+	}
+	
+	return 0;
+}
+
+int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx)
+{
+	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
+	struct io_response			*resp;
+	enum kenwood_hf_commands	rx_cmd;
+	enum kenwood_hf_commands	tx_cmd;
+	enum khf_function			func;
+
+	if (khf == NULL)
+		return EINVAL;
+
+	// First, get the current VFO.
+	kenwood_update_if(khf, true);
+	func = khf->last_if.function;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	switch(func) {
+		case FUNCTION_MEMORY:
+		case FUNCTION_COM:
+			return EACCES;
+		case FUNCTION_VFO_A:
+			rx_cmd = KW_HF_CMD_FA;
+			tx_cmd = KW_HF_CMD_FB;
+			break;
+		case FUNCTION_VFO_B:
+			rx_cmd = KW_HF_CMD_FB;
+			tx_cmd = KW_HF_CMD_FA;
+			break;
+	}
+	resp = kenwood_hf_command(khf, true, rx_cmd, freq_rx);
+	if (resp == NULL)
+		return ENODEV;
+	pthread_mutex_lock(&khf->cache_mtx);
+	khf->last_if.freq = freq_rx;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	free(resp);
+	resp = kenwood_hf_command(khf, true, tx_cmd, freq_tx);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_SP, SW_ON);
+	if (resp == NULL)
+		return ENODEV;
+	pthread_mutex_lock(&khf->cache_mtx);
+	khf->last_if.split = SW_ON;
+	pthread_mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	return 0;
 }
@@ -827,12 +920,57 @@ uint64_t kenwood_hf_get_frequency(void *cbdata)
 	uint64_t			ret;
 
 	if (khf == NULL)
-		return EINVAL;
+		return 0;
 
 	kenwood_update_if(khf, true);
 	ret = khf->last_if.freq;
 	pthread_mutex_unlock(&khf->cache_mtx);
 	return ret;
+}
+
+int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq)
+{
+	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
+	uint64_t					ret;
+	enum khf_function			func;
+	enum khf_sw					split;
+	enum kenwood_hf_commands	rx_cmd;
+	enum kenwood_hf_commands	tx_cmd;
+	struct io_response			*resp;
+
+	if (khf == NULL)
+		return EINVAL;
+
+	kenwood_update_if(khf, true);
+	func = khf->last_if.function;
+	split = khf->last_if.split;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	if (split == SW_OFF)
+		return EACCES;
+	switch(func) {
+		case FUNCTION_MEMORY:
+		case FUNCTION_COM:
+			return EACCES;
+		case FUNCTION_VFO_A:
+			rx_cmd = KW_HF_CMD_FA;
+			tx_cmd = KW_HF_CMD_FB;
+			break;
+		case FUNCTION_VFO_B:
+			rx_cmd = KW_HF_CMD_FB;
+			tx_cmd = KW_HF_CMD_FA;
+			break;
+	}
+	resp = kenwood_hf_command(khf, false, rx_cmd);
+	if (resp == NULL)
+		return ENODEV;
+	kenwood_rscanf(rx_cmd, resp, rx_freq);
+	free(resp);
+	resp = kenwood_hf_command(khf, false, tx_cmd);
+	if (resp == NULL)
+		return ENODEV;
+	kenwood_rscanf(tx_cmd, resp, tx_freq);
+	free(resp);
+	return 0;
 }
 
 int kenwood_hf_set_mode(void *cbdata, enum rig_modes rmode)
@@ -872,6 +1010,9 @@ int kenwood_hf_set_mode(void *cbdata, enum rig_modes rmode)
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_MD, mode);
 	if (resp == NULL)
 		return ENODEV;
+	pthread_mutex_lock(&khf->cache_mtx);
+	khf->last_if.mode = mode;
+	pthread_mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	return 0;
 }
@@ -933,6 +1074,9 @@ int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo)
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_FN, func);
 	if (resp == NULL)
 		return ENODEV;
+	pthread_mutex_lock(&khf->cache_mtx);
+	khf->last_if.function = func;
+	pthread_mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	return 0;
 }
@@ -972,6 +1116,12 @@ int kenwood_hf_set_ptt(void *cbdata, bool tx)
 		resp = kenwood_hf_command(khf, true, KW_HF_CMD_RX);
 	if (resp == NULL)
 		return ENODEV;
+	/*
+	 *  Force next IF to be sent... toggling PTT can toggle a lot of things.
+	 * like frequency etc. that we simply don't want to cache.
+	 */
+	
+	khf->last_if_tick = 0;
 	free(resp);
 	return 0;
 }

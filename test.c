@@ -30,6 +30,7 @@
 int main(int argc, char **argv)
 {
 	dictionary	*d;
+	uint64_t	rx,tx;
 	struct rig	*rig;
 
 	d = iniparser_load("test.ini");
@@ -51,5 +52,13 @@ int main(int argc, char **argv)
 	printf("Set PTT: %d\n", set_ptt(rig, true));
 	printf("Get PTT: %d\n", get_ptt(rig));
 	printf("Set PTT: %d\n", set_ptt(rig, false));
+	printf("Set Split Freqs: %d\n", set_split_frequency(rig, 28500000, 28300000));
+	printf("Get Split Freqs: %d\n", get_split_frequency(rig, &rx, &tx));
+	printf("RX: %"PRIu64" TX:%"PRIu64"\n", rx, tx);
+	printf("Get Freq: %"PRIu64"\n", get_frequency(rig));
+	printf("Set PTT: %d\n", set_ptt(rig, true));
+	printf("Get Freq: %"PRIu64"\n", get_frequency(rig));
+	printf("Set PTT: %d\n", set_ptt(rig, false));
 	printf("Close: %d\n", close_rig(rig));
+	return 0;
 }
