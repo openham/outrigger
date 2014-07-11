@@ -21,7 +21,6 @@ set(SOURCES
 	rigs/kenwood_hf/ts-940s.c
 	iniparser/src/dictionary.c
 	iniparser/src/iniparser.c
-	test.c
 )
 
 find_path(TERMIOS_PATH termios.h)
@@ -41,7 +40,9 @@ if(UNISTD_PATH)
 	endif()
 endif()
 
-add_executable(outrigger ${SOURCES})
+add_library(outrigger ${SOURCES})
+add_executable(test test.c)
+target_link_libraries(test outrigger)
 
 target_link_libraries(outrigger ${CMAKE_THREAD_LIBS_INIT})
 
