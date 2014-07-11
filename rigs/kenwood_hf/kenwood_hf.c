@@ -756,8 +756,8 @@ struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
 	/*
 	 * Set up some reasonable defaults to be shared among ALL rigs
 	 */
-	khf->response_timeout = getint(d, section, "response_timeout", 2000);
-	khf->char_timeout = getint(d, section, "char_timeout", 500);
+	khf->response_timeout = getint(d, section, "response_timeout", 1000);
+	khf->char_timeout = getint(d, section, "char_timeout", 50);
 	khf->send_timeout = getint(d, section, "send_timeout", 500);
 	khf->if_lifetime = getint(d, section, "cache_lifetime", 1000);
 	khf->inter_cmd_delay = getint(d, section, "inter_cmd_delay", 0);
