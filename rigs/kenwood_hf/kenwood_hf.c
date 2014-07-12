@@ -707,7 +707,7 @@ void kenwood_hf_handle_extra(void *handle, struct io_response *resp)
 	return;
 }
 
-static void kenwood_update_if(struct kenwood_hf *khf, bool lock)
+static int kenwood_update_if(struct kenwood_hf *khf, bool lock)
 {
 	uint64_t			now = ms_ticks();
 	struct io_response	*resp;
@@ -719,20 +719,20 @@ static void kenwood_update_if(struct kenwood_hf *khf, bool lock)
 	if (khf == NULL || (khf->last_if_tick != 0 && khf->last_if_tick + khf->if_lifetime >= now)) {
 		if (lock)
 			pthread_mutex_lock(&khf->cache_mtx);
-		return;
+		return 0;
 	}
 
 	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
 	if (resp==NULL) {
 		if (lock)
 			pthread_mutex_lock(&khf->cache_mtx);
-		return;
+		return -1;
 	}
 	rif = kenwood_parse_if(resp);
 	if (rif == NULL) {
 		if (lock)
 			pthread_mutex_lock(&khf->cache_mtx);
-		return;
+		return -1;
 	}
 	pthread_mutex_lock(&khf->cache_mtx);
 	khf->last_if = *rif;
@@ -740,6 +740,7 @@ static void kenwood_update_if(struct kenwood_hf *khf, bool lock)
 		pthread_mutex_unlock(&khf->cache_mtx);
 	free(rif);
 	khf->last_if_tick = now;
+	return 0;
 }
 
 struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
@@ -765,21 +766,27 @@ struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
 	return khf;
 }
 
-void kenwood_hf_init(struct kenwood_hf *khf)
+int kenwood_hf_init(struct kenwood_hf *khf)
 {
 	struct io_response			*resp;
 
 	// Send an IF command to synchronize... may fail.
 	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
+	if (resp)
+		free(resp);
 	// Lock the front panel and enable AI mode
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
 	if (resp)
 		free(resp);
+	else
+		return -1;
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 1);
 	if (resp)
 		free(resp);
+	else
+		return -1;
 	// Get the initial state...
-	kenwood_update_if(khf, false);
+	return kenwood_update_if(khf, false);
 }
 
 void kenwood_hf_free(struct kenwood_hf *khf)

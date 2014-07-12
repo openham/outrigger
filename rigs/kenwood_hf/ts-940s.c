@@ -118,6 +118,9 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 			KW_HF_CMD_FB, 200,
 			KW_HF_CMD_SP, 200,
 	KW_HF_TERMINATOR);
-	kenwood_hf_init(khf);
+	if (kenwood_hf_init(khf) != 0) {
+		ts940s_close(khf);
+		return NULL;
+	}
 	return ret;
 }

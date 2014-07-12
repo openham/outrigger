@@ -118,7 +118,7 @@ struct kenwood_hf {
 #define kenwood_hf_cmd_set(hf, cmd)		((hf->set_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 #define kenwood_hf_cmd_read(hf, cmd)	((hf->read_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 
-void kenwood_hf_init(struct kenwood_hf *khf);
+int kenwood_hf_init(struct kenwood_hf *khf);
 struct io_response *kenwood_hf_read_response(void *cbdata);
 void kenwood_hf_handle_extra(void *handle, struct io_response *resp);
 void kenwood_hf_setbits(char *array, ...);
