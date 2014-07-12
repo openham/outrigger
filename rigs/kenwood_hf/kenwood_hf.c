@@ -831,6 +831,8 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	enum kenwood_hf_commands	cmd;
 	enum khf_function			func;
 	enum khf_sw					split;
+	enum khf_sw					rit_on;
+	enum khf_sw					xit_on;
 
 	if (khf == NULL)
 		return EINVAL;
@@ -839,6 +841,8 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	kenwood_update_if(khf, true);
 	func = khf->last_if.function;
 	split = khf->last_if.split;
+	rit_on = khf->last_if.rit_on;
+	xit_on = khf->last_if.xit_on;
 	pthread_mutex_unlock(&khf->cache_mtx);
 	// TODO: Ensure we're not changing bands too
 	switch(func) {
@@ -866,6 +870,24 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 		free(resp);
 		pthread_mutex_lock(&khf->cache_mtx);
 		khf->last_if.split = SW_OFF;
+		pthread_mutex_unlock(&khf->cache_mtx);
+	}
+	if (rit_on == SW_ON) {
+		resp = kenwood_hf_command(khf, true, KW_HF_CMD_RT, SW_OFF);
+		if (resp == NULL)
+			return EINTR;
+		free(resp);
+		pthread_mutex_lock(&khf->cache_mtx);
+		khf->last_if.rit_on = SW_OFF;
+		pthread_mutex_unlock(&khf->cache_mtx);
+	}
+	if (xit_on == SW_ON) {
+		resp = kenwood_hf_command(khf, true, KW_HF_CMD_XT, SW_OFF);
+		if (resp == NULL)
+			return EINTR;
+		free(resp);
+		pthread_mutex_lock(&khf->cache_mtx);
+		khf->last_if.xit_on = SW_OFF;
 		pthread_mutex_unlock(&khf->cache_mtx);
 	}
 	
@@ -941,9 +963,14 @@ int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx
 	uint64_t					ret;
 	enum khf_function			func;
 	enum khf_sw					split;
+	enum khf_sw					rit_on;
+	enum khf_sw					xit_on;
+	enum khf_sw					tx;
+	int							rit;
 	enum kenwood_hf_commands	rx_cmd;
 	enum kenwood_hf_commands	tx_cmd;
 	struct io_response			*resp;
+	
 
 	if (khf == NULL)
 		return EINVAL;
@@ -951,9 +978,15 @@ int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx
 	kenwood_update_if(khf, true);
 	func = khf->last_if.function;
 	split = khf->last_if.split;
+	rit_on = khf->last_if.rit_on;
+	xit_on = khf->last_if.xit_on;
+	rit = khf->last_if.rit;
+	tx = khf->last_if.tx;
 	pthread_mutex_unlock(&khf->cache_mtx);
-	if (split == SW_OFF)
-		return EACCES;
+	if (split == SW_OFF) {
+		if (rit_on == xit_on)
+			return EACCES;
+	}
 	switch(func) {
 		case FUNCTION_MEMORY:
 		case FUNCTION_COM:
@@ -972,11 +1005,21 @@ int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx
 		return ENODEV;
 	kenwood_rscanf(rx_cmd, resp, rx_freq);
 	free(resp);
+	if (rit_on == SW_ON) {
+		if (xit_on != SW_ON)
+			if (tx == SW_ON)
+				rx_freq += rit;
+	}
 	resp = kenwood_hf_command(khf, false, tx_cmd);
 	if (resp == NULL)
 		return ENODEV;
 	kenwood_rscanf(tx_cmd, resp, tx_freq);
 	free(resp);
+	if (xit_on == SW_ON) {
+		if (rit_on != SW_ON)
+			if (tx == SW_OFF)
+				tx_freq += rit;
+	}
 	return 0;
 }
 
