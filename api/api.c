@@ -104,11 +104,15 @@ struct rig *init_rig(struct _dictionary_ *d, const char *section)
 
 int close_rig(struct rig *rig)
 {
+	int	ret;
+
 	if (rig == NULL)
 		return EINVAL;
 	if (rig->close == NULL)
 		return 0;
-	return rig->close(rig->cbdata);
+	ret = rig->close(rig->cbdata);
+	if (ret==0)
+		free(rig);
 }
 
 int set_frequency(struct rig *rig, uint64_t freq)
