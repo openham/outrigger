@@ -913,6 +913,7 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	enum khf_function			func;
 	enum khf_sw					rit_on;
 	enum khf_sw					xit_on;
+	int							ret;
 
 	if (khf == NULL)
 		return EINVAL;
@@ -1148,9 +1149,12 @@ int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo)
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_FN, func);
 	if (resp == NULL)
 		return ENODEV;
-	pthread_mutex_lock(&khf->cache_mtx);
-	khf->last_if.function = func;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	/*
+	 *  Force next IF to be sent... changing VFOs can toggle a lot of things.
+	 * like frequency etc. that we simply don't want to cache.
+	 */
+
+	khf->last_if_tick = 0;
 	free(resp);
 	return 0;
 }
