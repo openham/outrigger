@@ -324,7 +324,7 @@ static int serial_termios_broken_cts(struct io_serial_handle *hdl, unsigned time
 {
 	bool			cts=false;
 
-	while(timeout) {
+	while(timeout--) {
 		if (serial_termios_cts(hdl, &cts) != 0)
 			return -1;
 		if (cts)
