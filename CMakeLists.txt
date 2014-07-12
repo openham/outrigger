@@ -43,6 +43,8 @@ endif()
 add_library(outrigger ${SOURCES})
 add_executable(test test.c)
 target_link_libraries(test outrigger)
+add_executable(or-rigctld or-rigctld.c)
+target_link_libraries(or-rigctld outrigger)
 
 target_link_libraries(outrigger ${CMAKE_THREAD_LIBS_INIT})
 
