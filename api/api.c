@@ -113,6 +113,7 @@ int close_rig(struct rig *rig)
 	ret = rig->close(rig->cbdata);
 	if (ret==0)
 		free(rig);
+	return ret;
 }
 
 int set_frequency(struct rig *rig, uint64_t freq)
