@@ -824,6 +824,23 @@ void kenwood_hf_set_cmd_delays(struct kenwood_hf *khf, ...)
 	va_end(cmds);
 }
 
+static int disable_rit_xit(struct kenwood_hf *khf, bool xit)
+{
+	struct io_response			*resp;
+
+	resp = kenwood_hf_command(khf, true, xit?KW_HF_CMD_XT:KW_HF_CMD_RT, SW_OFF);
+	if (resp == NULL)
+		return EINTR;
+	free(resp);
+	pthread_mutex_lock(&khf->cache_mtx);
+	if (xit)
+		khf->last_if.xit_on = SW_OFF;
+	else
+		khf->last_if.rit_on = SW_OFF;
+	pthread_mutex_unlock(&khf->cache_mtx);
+	return 0;
+}
+
 int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 {
 	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
@@ -833,6 +850,7 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	enum khf_sw					split;
 	enum khf_sw					rit_on;
 	enum khf_sw					xit_on;
+	int							ret;
 
 	if (khf == NULL)
 		return EINVAL;
@@ -873,22 +891,14 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 		pthread_mutex_unlock(&khf->cache_mtx);
 	}
 	if (rit_on == SW_ON) {
-		resp = kenwood_hf_command(khf, true, KW_HF_CMD_RT, SW_OFF);
-		if (resp == NULL)
-			return EINTR;
-		free(resp);
-		pthread_mutex_lock(&khf->cache_mtx);
-		khf->last_if.rit_on = SW_OFF;
-		pthread_mutex_unlock(&khf->cache_mtx);
+		ret = disable_rit_xit(khf, false);
+		if (ret != 0)
+			return ret;
 	}
 	if (xit_on == SW_ON) {
-		resp = kenwood_hf_command(khf, true, KW_HF_CMD_XT, SW_OFF);
-		if (resp == NULL)
-			return EINTR;
-		free(resp);
-		pthread_mutex_lock(&khf->cache_mtx);
-		khf->last_if.xit_on = SW_OFF;
-		pthread_mutex_unlock(&khf->cache_mtx);
+		ret = disable_rit_xit(khf, true);
+		if (ret != 0)
+			return ret;
 	}
 	
 	return 0;
@@ -901,6 +911,8 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	enum kenwood_hf_commands	rx_cmd;
 	enum kenwood_hf_commands	tx_cmd;
 	enum khf_function			func;
+	enum khf_sw					rit_on;
+	enum khf_sw					xit_on;
 
 	if (khf == NULL)
 		return EINVAL;
@@ -908,6 +920,8 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	// First, get the current VFO.
 	kenwood_update_if(khf, true);
 	func = khf->last_if.function;
+	rit_on = khf->last_if.rit_on;
+	xit_on = khf->last_if.xit_on;
 	pthread_mutex_unlock(&khf->cache_mtx);
 	switch(func) {
 		case FUNCTION_MEMORY:
@@ -933,6 +947,16 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	if (resp == NULL)
 		return ENODEV;
 	free(resp);
+	if (rit_on == SW_ON) {
+		ret = disable_rit_xit(khf, false);
+		if (ret != 0)
+			return ret;
+	}
+	if (xit_on == SW_ON) {
+		ret = disable_rit_xit(khf, true);
+		if (ret != 0)
+			return ret;
+	}
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_SP, SW_ON);
 	if (resp == NULL)
 		return ENODEV;
