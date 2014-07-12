@@ -201,6 +201,7 @@ void handle_command(struct connection *c, size_t len)
 	char			*arg;
 	size_t			remain = c->rx_buf_size - (c->rx_buf_pos + len + 1);
 	uint64_t		u64;
+	uint64_t		rx_freq, tx_freq;
 	unsigned		u;
 	int				i;
 	char			*buf;
@@ -232,12 +233,36 @@ void handle_command(struct connection *c, size_t len)
 		else
 			tx_rprt(c, set_frequency(c->rig, u64));
 	}
+	else if ((strncmp(cmd, "I ", 2) == 0) || (strncmp(cmd, "set_split_freq ", 15) == 0)) {
+		arg = strchr(cmd, ' ');
+		arg++;
+		if (sscanf(arg, "%"SCNu64, &u64) != 1)
+			tx_append(c, "RPRT -1\n");
+		else {
+			ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+			if (ret != 0)
+				tx_rprt(c, ret);
+			else
+				tx_rprt(c, set_split_frequency(c->rig, rx_freq, u64));
+		}
+	}
 	else if ((strcmp(cmd, "f") == 0) || (strcmp(cmd, "get_freq") == 0)) {
 		u64 = get_frequency(c->rig);
 		if (u64 == 0)
 			tx_append(c, "RPRT -1\n");
 		else
 			tx_printf(c, "%"PRIu64"\n", u64);
+	}
+	else if ((strcmp(cmd, "i") == 0) || (strcmp(cmd, "get_split_freq") == 0)) {
+		ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+		if (ret != 0) {
+			tx_freq = get_frequency(c->rig);
+			if (tx_freq != 0) {
+				tx_append(c, "RPRT -1\n");
+				goto finish;
+			}
+		}
+		tx_printf(c, "%"PRIu64"\n", tx_freq);
 	}
 	else if ((strncmp(cmd, "M ", 2) == 0) || (strncmp(cmd, "set_mode ", 9) == 0) || (strncmp(cmd, "X ", 2) == 0) || (strncmp(cmd, "set_split_mode ", 15) == 0)) {
 		arg = strchr(cmd, ' ');
@@ -310,6 +335,59 @@ void handle_command(struct connection *c, size_t len)
 		else
 			tx_rprt(c, set_vfo(c->rig, vfo));
 	}
+	else if ((strncmp(cmd, "S ", 2) == 0) || (strncmp(cmd, "set_split_vfo ", 14) == 0)) {
+		arg = strchr(cmd, ' ');
+		arg++;
+		if (sscanf(arg, "%d", &i) != 1) {
+			tx_append(c, "RPRT -1\n");
+			goto finish;
+		}
+		if (i==0) {
+			u64 = get_frequency(c->rig);
+			if (u64 == 0)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_rprt(c, set_frequency(c->rig, u64));
+		}
+		else {
+			// "Enable split"
+			// First, switch to the "other" VFO to get the frequency
+			vfo = get_vfo(c->rig);
+			rx_freq = get_frequency(c->rig);
+			if (rx_freq == 0) {
+				tx_append(c, "RPRT -1\n");
+				goto finish;
+			}
+			switch (vfo) {
+				case VFO_A:
+					if (set_vfo(c->rig, VFO_B) != 0) {
+						tx_append(c, "RPRT -1\n");
+						goto finish;
+					}
+					break;
+				case VFO_B:
+					if (set_vfo(c->rig, VFO_A) != 0) {
+						tx_append(c, "RPRT -1\n");
+						goto finish;
+					}
+					break;
+				default:
+					break;
+			}
+			tx_freq = get_frequency(c->rig);
+			if (tx_freq == 0) {
+				tx_append(c, "RPRT -1\n");
+				goto finish;
+			}
+			// Now switch back
+			if (set_vfo(c->rig, vfo) != 0) {
+				tx_append(c, "RPRT -1\n");
+				goto finish;
+			}
+			// And finally, set the split.
+			tx_rprt(c, set_split_frequency(c->rig, rx_freq, tx_freq));
+		}
+	}
 	else if ((strcmp(cmd, "v") == 0) || (strcmp(cmd, "get_vfo") == 0)) {
 		vfo = get_vfo(c->rig);
 		switch(vfo) {
@@ -330,6 +408,28 @@ void handle_command(struct connection *c, size_t len)
 			tx_append(c, "RPRT -1\n");
 		else
 			tx_printf(c, "%s\n", buf);
+	}
+	else if ((strcmp(cmd, "s") == 0) || (strcmp(cmd, "get_split_vfo") == 0)) {
+		ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+		vfo = get_vfo(c->rig);
+		switch(vfo) {
+			case VFO_A:
+				buf = ret==0?"VFOB":"VFOA";
+				break;
+			case VFO_B:
+				buf = ret==0?"VFOA":"VFOB";
+				break;
+			case VFO_MEMORY:
+				buf = "MEM";
+				break;
+			default:
+				buf = NULL;
+				break;
+		}
+		if (buf == NULL)
+			tx_append(c, "RPRT -1\n");
+		else
+			tx_printf(c, "%d\n%s\n", ret==0?1:0, buf);
 	}
 	else if ((strncmp(cmd, "T ", 2) == 0) || (strncmp(cmd, "set_ptt ", 8) == 0)) {
 		arg = strchr(cmd, ' ');
@@ -388,6 +488,7 @@ void handle_command(struct connection *c, size_t len)
 	else {
 		tx_append(c, "RPRT -1\n");
 	}
+finish:
 	free(cmd);
 }
 
@@ -538,6 +639,13 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No rigs found!  Aborting.\n");
 		return 1;
 	}
+
+	/*
+	 * TODO: This should fork() for every rig... which will remove any
+	 * need to thread the design since each rig will have a single
+	 * process with no shared state.
+	 */
+
 	for (i=0; i<rig_count; i++)
 		active_rig_count += add_rig(d, iniparser_getsecname(d, i));
 
