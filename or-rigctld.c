@@ -602,6 +602,33 @@ void main_loop(void) {
 	}
 }
 
+void cleanup(void)
+{
+	struct connection	*c;
+	struct connection	*nc;
+	struct listener		*l;
+	struct listener		*nl;
+	struct rig_entry	*r;
+	struct rig_entry	*nr;
+
+	for (c=connections; c;) {
+		nc = c->next_connection;
+		close_connection(c);
+		c = nc;
+	}
+	for (l=listeners; l;) {
+		nl = l->next_listener;
+		close(l->socket);
+		free(l);
+		l = nl;
+	}
+	for (r=rigs; r;) {
+		nr = r->next_rig_entry;
+		close_rig(r->rig);
+		r = nr;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int			i;
@@ -650,6 +677,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No rigs found!  Aborting.\n");
 		return 1;
 	}
+
+	atexit(cleanup);
 
 	for (i=0; i<rig_count; i++) {
 #ifdef WITH_FORK
