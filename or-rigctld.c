@@ -299,7 +299,7 @@ void handle_command(struct connection *c, size_t len)
 		arg = strchr(cmd, ' ');
 		arg++;
 		vfo = VFO_UNKNOWN;
-		if (strcmp(arg, "VFOA")==0)
+		if ((strcmp(arg, "VFOA")==0) || (strcmp(arg, "VFO")==0))
 			vfo = VFO_A;
 		else if (strcmp(arg, "VFOB")==0)
 			vfo = VFO_B;
@@ -358,29 +358,25 @@ void handle_command(struct connection *c, size_t len)
 	else if (strcmp(cmd, "\\dump_state")==0) {
 		// Output copied from the dummy driver...
 		tx_append(c,
-			"0\n"
-			"1\n"
-			"2\n"
-			"150000.000000 1500000000.000000 0x1ff -1 -1 0x10000003 0x3\n"
+			"0\n"	// Protocol version
+			"1\n"	// Rig model (dummy)
+			"2\n"	// ITU region (!)
+			// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
+			"-1 -1 0x1ff -1 -1 0x10000003 0x01\n"
+			// Terminated with all zeros
 			"0 0 0 0 0 0 0\n"
+			// TX info (as above)
 			"0 0 0 0 0 0 0\n"
-			"0x1ff 1\n"
-			"0x1ff 0\n"
+			// Tuning steps available, modes, steps
 			"0 0\n"
-			"0x1e 2400\n"
-			"0x2 500\n"
-			"0x1 8000\n"
-			"0x1 2400\n"
-			"0x20 15000\n"
-			"0x20 8000\n"
-			"0x40 230000\n"
+			// Filter sizes, mode, bandwidth
 			"0 0\n"
-			"9990\n"
-			"9990\n"
-			"10000\n"
-			"0\n"
-			"10 \n"
-			"10 20 30 \n"
+			"0\n"	// Max RIT
+			"0\n"	// Max XIT
+			"0\n"	// Max IF shift
+			"0\n"		// "announces"
+			"\n"		// Preamp settings
+			"\n"	// Attenuator settings
 			"0x0\n"	// has get func
 			"0x0\n" // has set func
 			"0x0\n"	// get level
