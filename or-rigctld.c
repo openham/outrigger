@@ -211,7 +211,6 @@ void handle_command(struct connection *c, size_t len)
 	buf = strchr(cmd, '\r');
 	if (buf)
 		*buf = 0;
-fprintf(stderr, "Got command: '%s'\n", cmd);
 
 	// First, clean up the buffer...
 	if (remain) {
