@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <api.h>
@@ -608,6 +609,10 @@ int main(int argc, char **argv)
 	int			thread_count = 0;
 	dictionary	*d = NULL;
 	int			active_rig_count = 0;
+#ifdef WITH_FORK
+	pid_t		pid;
+	bool		use_fork = true;
+#endif
 
 	// Parse command-line arguments to find the INI file...
 	for (i=1; i<argc; i++) {
@@ -622,6 +627,12 @@ int main(int argc, char **argv)
 						fprintf(stderr, "Unable to parse %s\n", argv[i]);
 						return 1;
 					}
+					break;
+#ifdef WITH_FORK
+				case 'f':
+					use_fork = false;
+					break;
+#endif
 			}
 		}
 		else
@@ -640,16 +651,28 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	/*
-	 * TODO: This should fork() for every rig... which will remove any
-	 * need to thread the design since each rig will have a single
-	 * process with no shared state.
-	 */
-
-	for (i=0; i<rig_count; i++)
-		active_rig_count += add_rig(d, iniparser_getsecname(d, i));
+	for (i=0; i<rig_count; i++) {
+#ifdef WITH_FORK
+		if (use_fork) {
+			pid = fork();
+			if (pid == 0) {
+				// Child process
+				daemon(0, 0);
+				active_rig_count += add_rig(d, iniparser_getsecname(d, i));
+			}
+		}
+		else
+#endif
+		{
+			active_rig_count += add_rig(d, iniparser_getsecname(d, i));
+		}
+	}
 
 	if (active_rig_count == 0) {
+#ifdef WITH_FORK
+		if (use_fork)
+			return 0;
+#endif
 		fprintf(stderr, "Unable to set up any sockets!  Aborting\n");
 		return 1;
 	}
@@ -661,8 +684,16 @@ int main(int argc, char **argv)
 	return 0;
 usage:
 	printf("Usage:\n"
-		"%s -c <config>\n\n"
+		"%s %s-c <config>\n\n"
+#ifdef WITH_FORK
+		"If -f is passed, remains in the forground and doesn't fork\n\n"
+#endif
 		"Where <config> is the path to the ini file\n\n",
+#ifdef WITH_FORK
+		"-f ",
+#else
+		"",
+#endif
 		argv[0]);
 	if (d)
 		iniparser_freedict(d);

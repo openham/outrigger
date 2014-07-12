@@ -38,6 +38,8 @@ if(UNISTD_PATH)
 	if(HAS_POSIX_TIMERS)
 		list(APPEND SOURCES os/datetime_posix.c)
 	endif()
+	list(APPEND CMAKE_REQUIRED_LIBRARIES c)
+	check_symbol_exists(fork ${UNISTD_PATH}/unistd.h HAS_FORK)
 endif()
 
 add_library(outrigger ${SOURCES})
@@ -50,4 +52,8 @@ target_link_libraries(outrigger ${CMAKE_THREAD_LIBS_INIT})
 
 if(TERMIOS_PATH)
 	target_compile_definitions(outrigger PRIVATE WITH_TERMIOS)
+endif()
+
+if(HAS_FORK)
+	target_compile_definitions(or-rigctld PRIVATE WITH_FORK)
 endif()
