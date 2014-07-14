@@ -450,6 +450,26 @@ void handle_command(struct connection *c, size_t len)
 	else if (strcmp(cmd, "chk_vfo")==0) {
 		tx_append(c, "CHKVFO 0\n");
 	}
+	else if ((cmd[0]=='\x8b' && cmd[1]==0) || (strcmp(cmd, "get_dcd") == 0)) {
+		switch (get_squelch(c->rig)) {
+			case 0:
+				tx_append(c, "0\n");
+				break;
+			case 1:
+				tx_append(c, "1\n");
+				break;
+			default:
+				tx_append(c, "RPRT -1\n");
+				break;
+		}
+	}
+	else if ((strcmp(cmd, "l STRENGTH") == 0) || (strcmp(cmd, "get_level STRENGTH") == 0)) {
+		i = get_smeter(c->rig);
+		if ( i == -1)
+			tx_append(c, "RPRT -1\n");
+		else
+			tx_printf(c, "%d\n", i-49);
+	}
 	else if (strcmp(cmd, "\\dump_state")==0) {
 		// Output copied from the dummy driver...
 		tx_append(c,
@@ -474,7 +494,7 @@ void handle_command(struct connection *c, size_t len)
 			"\n"	// Attenuator settings
 			"0x0\n"	// has get func
 			"0x0\n" // has set func
-			"0x0\n"	// get level
+			"0x40100000\n"	// get level
 			"0x0\n"	// set level
 			"0x0\n"	// get param
 			"0x0\n" // set param

@@ -69,6 +69,8 @@ struct rig {
 	enum vfos (*get_vfo)(void *cbdata);
 	int (*set_ptt)(void *cbdata, bool);
 	int (*get_ptt)(void *cbdata);
+	int (*get_squelch)(void *cbdata);
+	int (*get_smeter)(void *cbdata);
 
 	void		*cbdata;
 };
@@ -165,9 +167,20 @@ int set_ptt(struct rig *rig, bool tx);
 /*
  * Reads 1 if rig is currently transmitting, 0 if it is not,
  * and -1 on failure
- * 
- * Returns VFO_UNKNOWN on failure
  */
 int get_ptt(struct rig *rig);
+
+/*
+ * Reads 1 if squelch is open, 0 if it is not,
+ * and -1 on failure
+ */
+int get_squelch(struct rig *rig);
+
+/*
+ * Reads an arbitrary s-meter value in dB over S0
+ * 
+ * returns -1 on failure
+ */
+int get_smeter(struct rig *rig);
 
 #endif

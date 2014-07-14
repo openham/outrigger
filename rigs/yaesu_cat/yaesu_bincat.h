@@ -83,21 +83,23 @@ struct yaesu_bincat {
 #define yaesu_bincat_cmd_set(ybc, cmd)		((ybc->set_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 #define yaesu_bincat_cmd_read(ybc, cmd)		((ybc->read_cmds[cmd/8] & (1 << (cmd % 8)))?1:0)
 
-int yaesu_bincat_init(struct yaesu_bincat *khf);
+int yaesu_bincat_init(struct yaesu_bincat *ybc);
 struct io_response *yaesu_bincat_read_response(void *cbdata);
 void yaesu_bincat_handle_extra(void *handle, struct io_response *resp);
 void yaesu_bincat_setbits(char *array, ...);
-struct io_response *yaesu_bincat_command(struct yaesu_bincat *khf, bool set, enum yaesu_bincat_cmds cmd, ...);
-void yaesu_bincat_free(struct yaesu_bincat *khf);
+struct io_response *yaesu_bincat_command(struct yaesu_bincat *ybc, bool set, enum yaesu_bincat_cmds cmd, ...);
+void yaesu_bincat_free(struct yaesu_bincat *ybc);
 struct yaesu_bincat *yaesu_bincat_new(struct _dictionary_ *d, const char *section);
 
 int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq);
 int yaesu_bincat_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx);
 uint64_t yaesu_bincat_get_frequency(void *cbdata);
 int yaesu_bincat_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq);
-int yaesu_bincat_set_mode(void *khf, enum rig_modes mode);
-enum rig_modes yaesu_bincat_get_mode(void *khf);
+int yaesu_bincat_set_mode(void *ybc, enum rig_modes mode);
+enum rig_modes yaesu_bincat_get_mode(void *ybc);
 int yaesu_bincat_set_ptt(void *cbdata, bool tx);
 int yaesu_bincat_get_ptt(void *cbdata);
+int yaesu_bincat_get_squelch(void *cbdata);
+int yaesu_bincat_get_smeter(void *cbdata);
 
 #endif

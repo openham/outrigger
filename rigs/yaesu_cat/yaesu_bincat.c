@@ -124,24 +124,28 @@ struct ybc_command ybc_cmd[] = {
 };
 
 /*
- * Reads a byte from the serial port
- * and returns a null terminated malloc()ed struct io_response *
+ * Reads five bytes from the serial port
+ * and returns a malloc()ed struct io_response *
  */
 struct io_response *yaesu_bincat_read_response(void *cbdata)
 {
-	size_t	retsize = offsetof(struct io_response, msg)+1;
+	size_t	retsize = offsetof(struct io_response, msg)+5;
 	int		rd;
 	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
 	struct io_response	*ret = (struct io_response *)malloc(retsize);
 
 	if (ret == NULL)
 		return NULL;
-	if (io_wait_read(ybc->handle, ybc->response_timeout) != 1)
+	for(ret->len=0; ret->len < 5;) {
+		if (io_wait_read(ybc->handle, ybc->response_timeout) != 1)
+			goto fail;
+		rd = io_read(ybc->handle, ret->msg+ret->len, 1, ybc->char_timeout);
+		if (rd != 1)
+			goto fail;
+		ret->len += rd;
+	}
+	if (ret->len != 5)
 		goto fail;
-	rd = io_read(ybc->handle, ret->msg, 1, ybc->char_timeout);
-	if (rd != 1)
-		goto fail;
-	ret->len = 1;
 	return ret;
 
 fail:
@@ -488,4 +492,36 @@ int yaesu_bincat_get_ptt(void *cbdata)
 	if (ybc->ptt)
 		return 1;
 	return 0;
+}
+
+int yaesu_bincat_get_squelch(void *cbdata)
+{
+	struct io_response	*resp;
+	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
+
+	resp = yaesu_bincat_command(ybc, false, Y_BC_CMD_TEST_SQUELCH);
+	if (resp == NULL)
+		return -1;
+	if (resp->msg[1] & 0x80) {
+		free(resp);
+		return 1;
+	}
+	free(resp);
+	return 0;
+}
+
+int yaesu_bincat_get_smeter(void *cbdata)
+{
+	struct io_response	*resp;
+	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
+	int					ret;
+
+	resp = yaesu_bincat_command(ybc, false, Y_BC_CMD_TEST_S_METER);
+	if (resp == NULL)
+		return -1;
+	ret = ((unsigned char)resp->msg[1])-0x20;
+	free(resp);
+	if (ret < 0)
+		ret = 0;
+	return ret;
 }

@@ -113,7 +113,7 @@ struct io_response *io_get_response(struct io_handle *hdl, const char *match, si
 		mutex_unlock(&hdl->lock);
 		if (resp==NULL)
 			break;
-		if (matchlen+matchpos > resp->len || match == NULL || strncmp(match+matchpos, resp->msg, matchlen) != 0) {
+		if (matchlen+matchpos > resp->len || (match != NULL && strncmp(match+matchpos, resp->msg, matchlen) != 0)) {
 			hdl->async_cb(hdl->cbdata, resp);
 			free(resp);
 			resp = NULL;

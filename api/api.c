@@ -212,7 +212,26 @@ int get_ptt(struct rig *rig)
 {
 	if (rig == NULL)
 		return -1;
-	if (rig->get_vfo == NULL)
+	if (rig->get_ptt == NULL)
 		return -1;
-	return rig->get_vfo(rig->cbdata);
+	return rig->get_ptt(rig->cbdata);
 }
+
+int get_squelch(struct rig *rig)
+{
+	if (rig == NULL)
+		return -1;
+	if (rig->get_squelch == NULL)
+		return -1;
+	return rig->get_squelch(rig->cbdata);
+}
+
+int get_smeter(struct rig *rig)
+{
+	if (rig == NULL)
+		return -1;
+	if (rig->get_smeter == NULL)
+		return -1;
+	return rig->get_smeter(rig->cbdata);
+}
+

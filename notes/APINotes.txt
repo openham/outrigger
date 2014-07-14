@@ -31,6 +31,8 @@ Turn off
 Set filter
 Disable "hands off" optimized mode
 Update Info
+Read S-meter
+	Reading is a positive integer in dB over S0.
 
 The "hands off" mode will be the default mode and allows the program to
 optimize access by agressively caching data.  For rigs with an interface lock,

@@ -83,6 +83,8 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 	ret->get_mode = yaesu_bincat_get_mode;
 	ret->set_ptt = yaesu_bincat_set_ptt;
 	ret->get_ptt = yaesu_bincat_get_ptt;
+	ret->get_squelch = yaesu_bincat_get_squelch;
+	ret->get_smeter = yaesu_bincat_get_smeter;
 	ret->cbdata = ybc;
 	yaesu_bincat_setbits(ybc->set_cmds, Y_BC_CMD_CAT_ON, 
 		Y_BC_CMD_CAT_OFF, Y_BC_CMD_FREQUENCY, Y_BC_CMD_MODE, Y_BC_CMD_TX,
