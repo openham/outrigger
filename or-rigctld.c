@@ -724,6 +724,7 @@ int main(int argc, char **argv)
 				// Child process
 				daemon(0, 0);
 				active_rig_count += add_rig(d, iniparser_getsecname(d, i));
+				break;
 			}
 		}
 		else
