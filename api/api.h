@@ -31,8 +31,6 @@
 
 struct _dictionary_;
 
-#include <ts-940s.h>
-
 enum rig_modes {
 	MODE_UNKNOWN	= 0,
 	MODE_CW			= 0x01,
@@ -43,7 +41,8 @@ enum rig_modes {
 	MODE_LSB		= 0x20,
 	MODE_USB		= 0x40,
 	MODE_FM			= 0x80,
-	MODE_FSK		= 0x100
+	MODE_FMN		= 0x100,
+	MODE_FSK		= 0x200
 };
 
 enum vfos {

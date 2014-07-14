@@ -11,6 +11,7 @@ include_directories(
 	io/serial
 	os
 	rigs/kenwood_hf
+	rigs/yaesu_cat
 )
 
 set(SOURCES
@@ -19,6 +20,8 @@ set(SOURCES
 	io/serial/serial.c
 	rigs/kenwood_hf/kenwood_hf.c
 	rigs/kenwood_hf/ts-940s.c
+	rigs/yaesu_cat/yaesu_bincat.c
+	rigs/yaesu_cat/ft-736r.c
 	iniparser/src/dictionary.c
 	iniparser/src/iniparser.c
 )

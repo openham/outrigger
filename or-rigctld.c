@@ -136,12 +136,12 @@ void close_connection(struct connection *c)
 		free(c->tx_buf);
 	if (c->rx_buf)
 		free(c->rx_buf);
+	if (c->next_connection)
+		c->next_connection->prev_connection = c->prev_connection;
 	if (c->prev_connection)
 		c->prev_connection->next_connection = c->next_connection;
 	else
 		connections = c->next_connection;
-	if (c->next_connection)
-		c->next_connection->prev_connection = c->prev_connection;
 	free(c);
 }
 
@@ -182,10 +182,8 @@ void tx_rprt(struct connection *c, int ret)
 	if (ret > 0)
 		ret = 0-ret;
 	sret = snprintf(buf, sizeof(buf), "RPRT %d\n", ret);
-	if (sret > 0 && sret < sizeof(buf)) {
+	if (sret > 0 && sret < sizeof(buf))
 		tx_append(c, buf);
-		free(buf);
-	}
 	else
 		tx_append(c, "RPRT -1\n");
 }
@@ -209,7 +207,7 @@ void handle_command(struct connection *c, size_t len)
 
 	// First, clean up the buffer...
 	if (remain) {
-		memmove(c->rx_buf, c->rx_buf + len + 1, c->rx_buf_pos - len);
+		memmove(c->rx_buf, c->rx_buf + len + 1, c->rx_buf_size - (len + 1));
 		c->rx_buf_pos = 0;
 	}
 	else {
@@ -456,7 +454,7 @@ void handle_command(struct connection *c, size_t len)
 			"1\n"	// Rig model (dummy)
 			"2\n"	// ITU region (!)
 			// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
-			"-1 -1 0x1ff -1 -1 0x10000003 0x01\n"
+			"0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n"
 			// Terminated with all zeros
 			"0 0 0 0 0 0 0\n"
 			// TX info (as above)

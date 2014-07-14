@@ -34,8 +34,9 @@ Update Info
 
 The "hands off" mode will be the default mode and allows the program to
 optimize access by agressively caching data.  For rigs with an interface lock,
-the interface lock should be enabled.  Even in this mode however, it should
-periodically poll to update the state when possible.
+the interface lock should be enabled unless it interferes with computer control
+(such as in the TS-940S).  Even in this mode however, it should periodically
+poll to update the state when possible.
 
 This is the default because some rigs (ie: FT-736R) are write-only CAT.  It's
 not actually possible to *read* anything.

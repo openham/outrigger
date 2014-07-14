@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <iniparser.h>
 #include <threads.h>
 #include <semaphores.h>
 #include <mutexes.h>
