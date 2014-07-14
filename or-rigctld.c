@@ -23,14 +23,10 @@
  * SOFTWARE.
  */
 
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <sys/select.h>
-#include <sys/socket.h>
+#include <sockets.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
@@ -72,8 +68,6 @@ int add_rig(dictionary *d, char *section)
 	char				*port;
 	char				*addr;
 	struct addrinfo		hints, *res, *res0;
-	struct listener 	*ret;
-	struct rig			*rig;
 	int					listener_count = 0;
 	struct rig_entry	*entry;
 	struct listener		*listener;
@@ -107,13 +101,13 @@ int add_rig(dictionary *d, char *section)
 			free(listener);
 			continue;
 		}
-		if (fcntl(listener->socket, F_SETFL, O_NONBLOCK) == -1) {
-			close(listener->socket);
+		if (socket_nonblocking(listener->socket) == -1) {
+			closesocket(listener->socket);
 			free(listener);
 			continue;
 		}
 		if (bind(listener->socket, res->ai_addr, res->ai_addrlen) < 0) {
-			close(listener->socket);
+			closesocket(listener->socket);
 			free(listener);
 			continue;
 		}
@@ -137,7 +131,7 @@ int add_rig(dictionary *d, char *section)
 
 void close_connection(struct connection *c)
 {
-	close(c->socket);
+	closesocket(c->socket);
 	if (c->tx_buf)
 		free(c->tx_buf);
 	if (c->rx_buf)
@@ -169,26 +163,26 @@ void tx_append(struct connection *c, const char *str)
 void tx_printf(struct connection *c, const char *format, ...)
 {
 	va_list	args;
-	char	*buf;
+	char	buf[128];
 	int		ret;
 
 	va_start(args, format);
-	ret = vasprintf(&buf, format, args);
-	if (ret == -1)
+	ret = vsnprintf(buf, sizeof(buf), format, args);
+	if (ret < 0 || ret >= sizeof(buf))
 		tx_append(c, "RPRT -1\n");
-	else {
+	else
 		tx_append(c, buf);
-		free(buf);
-	}
 }
 
 void tx_rprt(struct connection *c, int ret)
 {
-	char *buf;
+	char	buf[64];
+	int		sret;
 
 	if (ret > 0)
 		ret = 0-ret;
-	if (asprintf(&buf, "RPRT %d\n", ret) != -1) {
+	sret = snprintf(buf, sizeof(buf), "RPRT %d\n", ret);
+	if (sret > 0 && sret < sizeof(buf)) {
 		tx_append(c, buf);
 		free(buf);
 	}
@@ -203,7 +197,6 @@ void handle_command(struct connection *c, size_t len)
 	size_t			remain = c->rx_buf_size - (c->rx_buf_pos + len + 1);
 	uint64_t		u64;
 	uint64_t		rx_freq, tx_freq;
-	unsigned		u;
 	int				i;
 	char			*buf;
 	int				ret;
@@ -618,7 +611,7 @@ void cleanup(void)
 	}
 	for (l=listeners; l;) {
 		nl = l->next_listener;
-		close(l->socket);
+		closesocket(l->socket);
 		free(l);
 		l = nl;
 	}

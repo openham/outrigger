@@ -40,38 +40,38 @@
 #include "serial/io_termios.h"
 #endif
 
-static void *read_thread(void *arg)
+static void read_thread(void *arg)
 {
 	struct io_handle	*hdl = (struct io_handle *)arg;
 	struct io_response	*resp;
 	bool				use_sem;
 
 	while(!hdl->terminate) {
-		pthread_mutex_lock(&hdl->lock);
+		mutex_lock(&hdl->lock);
 		use_sem = hdl->sync_pending;
-		pthread_mutex_unlock(&hdl->lock);
+		mutex_unlock(&hdl->lock);
 		resp = hdl->read_cb(hdl->cbdata);
-		pthread_mutex_lock(&hdl->lock);
+		mutex_lock(&hdl->lock);
 		hdl->response = resp;
 		if (hdl->sync_pending) {
-			pthread_mutex_unlock(&hdl->lock);
+			mutex_unlock(&hdl->lock);
 			if (resp == NULL) {
 				if (use_sem) {
-					sem_post(&hdl->response_semaphore);
-					sem_wait(&hdl->ack_semaphore);
+					semaphore_post(&hdl->response_semaphore);
+					semaphore_wait(&hdl->ack_semaphore);
 				}
 			}
 			else {
-				sem_post(&hdl->response_semaphore);
-				sem_wait(&hdl->ack_semaphore);
+				semaphore_post(&hdl->response_semaphore);
+				semaphore_wait(&hdl->ack_semaphore);
 			}
 		}
 		else {
-			pthread_mutex_unlock(&hdl->lock);
+			mutex_unlock(&hdl->lock);
 			hdl->async_cb(hdl->cbdata, resp);
 		}
 	}
-	return NULL;
+	return;
 }
 
 /*
@@ -89,35 +89,35 @@ struct io_response *io_get_response(struct io_handle *hdl, const char *match, si
 	if (match == NULL)
 		return NULL;
 
-	if (pthread_mutex_lock(&hdl->sync_lock) != 0)
+	if (mutex_lock(&hdl->sync_lock) != 0)
 		return NULL;
-	if (pthread_mutex_lock(&hdl->lock) != 0) {
-		pthread_mutex_unlock(&hdl->sync_lock);
+	if (mutex_lock(&hdl->lock) != 0) {
+		mutex_unlock(&hdl->sync_lock);
 		return NULL;
 	}
 	hdl->sync_pending = true;
-	pthread_mutex_unlock(&hdl->lock);
+	mutex_unlock(&hdl->lock);
 
 	/*
 	 * This loop must be exiting with only sync_lock held and AFTER
-	 * response_semaphore has been waited on.  If sem_wait() fails, we're
+	 * response_semaphore has been waited on.  If semaphore_wait() fails, we're
 	 * going to have a bad time.
 	 */
 	for(;;) {
 		// Failure is not an option...
-		sem_wait(&hdl->response_semaphore);
-		if (pthread_mutex_lock(&hdl->lock) != 0)
+		semaphore_wait(&hdl->response_semaphore);
+		if (mutex_lock(&hdl->lock) != 0)
 			break;
 		resp = hdl->response;
 		hdl->response = NULL;
-		pthread_mutex_unlock(&hdl->lock);
+		mutex_unlock(&hdl->lock);
 		if (resp==NULL)
 			break;
 		if (matchlen+matchpos > resp->len || strncmp(match+matchpos, resp->msg, matchlen) != 0) {
 			hdl->async_cb(hdl->cbdata, resp);
 			free(resp);
 			resp = NULL;
-			sem_post(&hdl->ack_semaphore);
+			semaphore_post(&hdl->ack_semaphore);
 		}
 		else
 			break;
@@ -126,11 +126,11 @@ struct io_response *io_get_response(struct io_handle *hdl, const char *match, si
 	/* 
 	 * Failure here is also bad, but we're saved by the ack semaphore.
 	 */
-	pthread_mutex_lock(&hdl->lock);
+	mutex_lock(&hdl->lock);
 	hdl->sync_pending = false;
-	sem_post(&hdl->ack_semaphore);
-	pthread_mutex_unlock(&hdl->lock);
-	pthread_mutex_unlock(&hdl->sync_lock);
+	semaphore_post(&hdl->ack_semaphore);
+	mutex_unlock(&hdl->lock);
+	mutex_unlock(&hdl->sync_lock);
 	return resp;
 }
 
@@ -151,11 +151,11 @@ struct io_handle *io_start(enum io_handle_type htype, void *handle, io_read_call
 			return NULL;
 	}
 
-	pthread_mutex_init(&ret->sync_lock, NULL);
-	pthread_mutex_init(&ret->lock, NULL);
-	sem_init(&ret->response_semaphore, 0, 0);
-	sem_init(&ret->ack_semaphore, 0, 0);
-	pthread_create(&ret->read_thread, NULL, read_thread, ret);
+	mutex_init(&ret->sync_lock);
+	mutex_init(&ret->lock);
+	semaphore_init(&ret->response_semaphore, 0);
+	semaphore_init(&ret->ack_semaphore, 0);
+	create_thread(read_thread, ret, &ret->read_thread);
 	return ret;
 }
 
@@ -272,18 +272,17 @@ struct io_handle *io_start_from_dictionary(dictionary *d, const char *section, e
 
 int io_end(struct io_handle *hdl)
 {
-	void	*ret;
 	int		retval = 0;
 
 	if (hdl == NULL)
 		return EINVAL;
 
 	hdl->terminate = true;
-	pthread_join(hdl->read_thread, &ret);
-	pthread_mutex_destroy(&hdl->sync_lock);
-	pthread_mutex_destroy(&hdl->lock);
-	sem_destroy(&hdl->response_semaphore);
-	sem_destroy(&hdl->ack_semaphore);
+	wait_thread(hdl->read_thread);
+	mutex_destroy(&hdl->sync_lock);
+	mutex_destroy(&hdl->lock);
+	semaphore_destroy(&hdl->response_semaphore);
+	semaphore_destroy(&hdl->ack_semaphore);
 	switch(hdl->type) {
 		case IO_H_SERIAL:
 			serial_close(hdl->handle.serial);

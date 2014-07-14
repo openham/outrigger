@@ -39,58 +39,61 @@ struct supported_rig supported_rigs[] = {
 
 int set_default(struct _dictionary_ *d, const char *section, const char *key, const char *dflt)
 {
-	char	*skey;
+	char	skey[1024];
+	int		sret;
 	int		ret=0;
 
 	if (section == NULL || key == NULL)
 		return -1;
-
-	if (asprintf(&skey, "%s:%s", section, key) < 0)
+	sret = snprintf(skey, sizeof(skey), "%s:%s", section, key);
+	if (sret < 0 || sret >= sizeof(skey))
 		return -1;
 	if (!iniparser_find_entry(d, skey))
 		ret = iniparser_set(d, skey, dflt);
-	free(skey);
 	return ret;
 }
 
 int getint(struct _dictionary_ *d, const char *section, const char *key, int dflt)
 {
-	char	*skey;
+	char	skey[1024];
+	int		sret;
 	int		ret=0;
 
 	if (section == NULL || key == NULL)
 		return -1;
-	if (asprintf(&skey, "%s:%s", section, key) < 0)
+	sret = snprintf(skey, sizeof(skey), "%s:%s", section, key);
+	if (sret < 0 || sret >= sizeof(skey))
 		return -1;
 	ret = iniparser_getint(d, skey, dflt);
-	free(skey);
 	return ret;
 }
 
 char *getstring(struct _dictionary_ *d, const char *section, const char *key, char *dflt)
 {
-	char	*skey;
+	char	skey[1024];
+	int		sret;
 	char	*ret=0;
 
 	if (section == NULL || key == NULL)
 		return NULL;
-	if (asprintf(&skey, "%s:%s", section, key) < 0)
+	sret = snprintf(skey, sizeof(skey), "%s:%s", section, key);
+	if (sret < 0 || sret >= sizeof(skey))
 		return NULL;
 	ret = iniparser_getstring(d, skey, dflt);
-	free(skey);
 	return ret;
 }
 
 struct rig *init_rig(struct _dictionary_ *d, const char *section)
 {
 	int			i;
-	char		*key;
+	char		key[1024];
+	int			sret;
 	char		*rig;
 
-	if (asprintf(&key, "%s:rig", section) < 0)
+	sret = snprintf(key, sizeof(key), "%s:%s", section, key);
+	if (sret < 0 || sret >= sizeof(key))
 		return NULL;
 	rig = iniparser_getstring(d, key, NULL);
-	free(key);
 	if (rig==NULL)
 		return NULL;
 	for (i=0; supported_rigs[i].init != NULL; i++) {

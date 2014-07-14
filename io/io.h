@@ -28,9 +28,10 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <iniparser.h>
+
+#include <threads.h>
+#include <semaphores.h>
+#include <mutexes.h>
 
 enum io_handle_type {
 	IO_H_FIRST,
@@ -56,12 +57,12 @@ struct io_handle {
 		struct io_serial_handle	*serial;
 	} handle;
 	bool				terminate;			// Terminate the read thread
-	sem_t				response_semaphore;	// Posted when a message is received and sync_pending is true
-	sem_t				ack_semaphore;		// Posted when the thing which waited on response_semaphore
+	semaphore_t			response_semaphore;	// Posted when a message is received and sync_pending is true
+	semaphore_t			ack_semaphore;		// Posted when the thing which waited on response_semaphore
 													// has used the response (ie: read next)
-	pthread_mutex_t		sync_lock;			// Held by something waiting for a specific response
-	pthread_mutex_t		lock;				// Held when reading/writing shared data
-	pthread_t			read_thread;		// The read thread
+	mutex_t				sync_lock;			// Held by something waiting for a specific response
+	mutex_t				lock;				// Held when reading/writing shared data
+	thread_t			read_thread;		// The read thread
 	bool				sync_pending;		// True if there is a thread waiting on response_semaphore
 	struct io_response	*response;			// Set before response_semaphore is posted.
 	size_t				response_len;

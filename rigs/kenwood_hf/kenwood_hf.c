@@ -148,53 +148,53 @@ struct khf_command khf_cmd[] = {
 		0
 	},
 	{ "AT1", "AT", KW_HF_CMD_AT1, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "DI", "DI", KW_HF_CMD_DI, 
-		0, {}, 
-		0, {}, 
+		0, {0}, 
+		0, {0}, 
 		2, {KHF_PARAM_CALL_SIGN, KHF_PARAM_CALL_SIGN}
 	},
 	{ "DN", "DN", KW_HF_CMD_DN, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "DS", "DS", KW_HF_CMD_DS, 
 		1, {KHF_PARAM_SW}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_SW}
 	},
 	{ "FA", "FA", KW_HF_CMD_FA, 
 		1, {KHF_PARAM_FREQUENCY}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_FREQUENCY}
 	},
 	{ "FB", "FB", KW_HF_CMD_FB, 
 		1, {KHF_PARAM_FREQUENCY}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_FREQUENCY}
 	},
 	{ "FN", "FN", KW_HF_CMD_FN, 
 		1, {KHF_PARAM_FUNCTION},
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}
 	},
 	{ "HD", "HD", KW_HF_CMD_HD, 
 		1, {KHF_PARAM_SW}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_SW}
 	},
 	{ "ID", "ID", KW_HF_CMD_ID, 
-		0, {}, 
-		0, {}, 
+		0, {0}, 
+		0, {0}, 
 		1, {KHF_PARAM_MODEL_NO}
 	},
 	{ "IF", "IF", KW_HF_CMD_IF, 
-		0, {}, 
-		0, {}, 
+		0, {0}, 
+		0, {0}, 
 		15, {
 			KHF_PARAM_FREQUENCY, 
 			KHF_PARAM_STEP_FREQUENCY, 
@@ -215,26 +215,26 @@ struct khf_command khf_cmd[] = {
 	},
 	{ "LK", "LK", KW_HF_CMD_LK, 
 		1, {KHF_PARAM_SW}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_SW}
 	},
 	{ "LO", "LO", KW_HF_CMD_LO, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "MC", "MC", KW_HF_CMD_MC, 
 		2, {KHF_PARAM_MEMORY_BANK, KHF_PARAM_MEMORY_CHANNEL},
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}
 	},
 	{ "MD", "MD", KW_HF_CMD_MD, 
 		1, {KHF_PARAM_MODE}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}
 	},
 	{ "MR", "MR", KW_HF_CMD_MR, 
-		0, {}, 
+		0, {0}, 
 		3, {
 			KHF_PARAM_MEM_SPLIT_SPEC, 
 			KHF_PARAM_MEMORY_BANK, 
@@ -254,7 +254,7 @@ struct khf_command khf_cmd[] = {
 	},
 	{ "MS", "MS", KW_HF_CMD_MS, 
 		1, {KHF_PARAM_SW}, 
-		0, {}, 
+		0, {0}, 
 		1, {KHF_PARAM_SW}
 	},
 	{ "MW", "MW", KW_HF_CMD_MW, 
@@ -269,97 +269,97 @@ struct khf_command khf_cmd[] = {
 			KHF_PARAM_TONE_FREQUENCY, 
 			KHF_PARAM_OFFSET
 		}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}
 	},
 	{ "OS", "OS", KW_HF_CMD_OS, 
 		1, {KHF_PARAM_TONE_FREQUENCY}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}
 	},
 	{ "RC", "RC", KW_HF_CMD_RC, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "RD", "RD", KW_HF_CMD_RD, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "RU", "RU", KW_HF_CMD_RU, 
-		0, {}, 
-		0, {}, 
-		0, {}
+		0, {0}, 
+		0, {0}, 
+		0, {0}
 	},
 	{ "RT", "RT", KW_HF_CMD_RT,
 		1, { KHF_PARAM_SW },
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "RX", "RX", KW_HF_CMD_RX,
-		0, {},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0},
+		0, {0}
 	},
 	{ "TX", "TX", KW_HF_CMD_TX,
-		0, {},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0},
+		0, {0}
 	},
 	{ "SC", "SC", KW_HF_CMD_SC,
 		1, {KHF_PARAM_SW},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "SH", "SH", KW_HF_CMD_SH,
 		1, {KHF_PARAM_PASSBAND},
-		0, {},
+		0, {0},
 		1, {KHF_PARAM_PASSBAND}
 	},
 	{ "SL", "SL", KW_HF_CMD_SL,
 		1, {KHF_PARAM_PASSBAND},
-		0, {},
+		0, {0},
 		1, {KHF_PARAM_PASSBAND}
 	},
 	{ "SP", "SP", KW_HF_CMD_SP,
 		1, {KHF_PARAM_SW},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "ST", "ST", KW_HF_CMD_ST,
 		1, {KHF_PARAM_STEP_FREQUENCY},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "TN", "TN", KW_HF_CMD_TN,
 		1, {KHF_PARAM_TONE_FREQUENCY},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "TO", "TO", KW_HF_CMD_TO,
 		1, {KHF_PARAM_SW},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 	{ "VB", "VB", KW_HF_CMD_VB,
 		1, {KHF_PARAM_PASSBAND},
-		0, {},
+		0, {0},
 		1, {KHF_PARAM_PASSBAND}
 	},
 	{ "VR", "VR", KW_HF_CMD_VR,
-		0, {},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0},
+		0, {0}
 	},
 	{ "XT", "XT", KW_HF_CMD_XT,
 		1, {KHF_PARAM_SW},
-		0, {},
-		0, {}
+		0, {0},
+		0, {0}
 	},
 
 
-	{ "", "", KW_HF_CMD_COUNT, 0, {}, 0, {}, 0, {} }
+	{ "", "", KW_HF_CMD_COUNT, 0, {0}, 0, {0}, 0, {0} }
 };
 
 /*
@@ -427,7 +427,7 @@ static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 		return -1;
 
 	if(now <= khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay)
-		ms_sleep(khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay - now);
+		ms_sleep((unsigned)(khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay - now));
 	khf->last_cmd_tick = ms_ticks();
 	khf->additional_intercmd_delay = 0;
 	return io_write(khf->handle, cmd, wlen, khf->char_timeout);
@@ -439,11 +439,11 @@ static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 static int kenwood_sendvf(struct kenwood_hf *khf, const char *fmt, va_list params)
 {
 	int		len;
-	char	*cmd;
+	char	cmd[1024];
 	int		ret;
 
-	len = vasprintf(&cmd, fmt, params);
-	if(len == -1)
+	len = vsnprintf(cmd, sizeof(cmd), fmt, params);
+	if(len < 0 || len >= sizeof(cmd))
 		return -1;
 	ret = kenwood_send(khf, cmd, len);
 	free(cmd);
@@ -456,8 +456,6 @@ static int kenwood_sendvf(struct kenwood_hf *khf, const char *fmt, va_list param
 static int kenwood_sendf(struct kenwood_hf *khf, const char *fmt, ...)
 {
 	va_list params;
-	int		len;
-	char	*cmd;
 	int		ret;
 
 	va_start(params, fmt);
@@ -485,7 +483,6 @@ static struct io_response *kenwood_cmdf_response(struct kenwood_hf *khf, const c
 {
 	va_list params;
 	int		sret;
-	char	*ret;
 
 	va_start(params, cmd);
 	sret = kenwood_sendvf(khf, cmd, params);
@@ -521,7 +518,7 @@ static int kenwood_rscanf(enum kenwood_hf_commands cmd, struct io_response *resp
 {
 	va_list		args;
 	size_t		pos = 0;
-	int			i;
+	unsigned	i;
 	char		*strval;
 	int			*ival;
 	unsigned	*uval;
@@ -585,7 +582,7 @@ struct io_response *kenwood_hf_command(struct kenwood_hf *khf, bool set, enum ke
 {
 	char			cmdstr[128];
 	char			pstr[128];
-	int				i;
+	unsigned		i;
 	va_list			args;
 	struct khf_command	*cmdinfo = kenwood_find_command(cmd);
 	int				ival;
@@ -696,9 +693,9 @@ void kenwood_hf_handle_extra(void *handle, struct io_response *resp)
 		if (resp->msg[0] == 'I' && resp->msg[1] == 'F') {
 			rif = kenwood_parse_if(resp);
 			if (rif != NULL) {
-				pthread_mutex_lock(&khf->cache_mtx);
+				mutex_lock(&khf->cache_mtx);
 				khf->last_if = *rif;
-				pthread_mutex_unlock(&khf->cache_mtx);
+				mutex_unlock(&khf->cache_mtx);
 				free(rif);
 			}
 		}
@@ -718,26 +715,26 @@ static int kenwood_update_if(struct kenwood_hf *khf, bool lock)
 	 */
 	if (khf == NULL || (khf->last_if_tick != 0 && khf->last_if_tick + khf->if_lifetime >= now)) {
 		if (lock)
-			pthread_mutex_lock(&khf->cache_mtx);
+			mutex_lock(&khf->cache_mtx);
 		return 0;
 	}
 
 	resp = kenwood_hf_command(khf, false, KW_HF_CMD_IF);
 	if (resp==NULL) {
 		if (lock)
-			pthread_mutex_lock(&khf->cache_mtx);
+			mutex_lock(&khf->cache_mtx);
 		return -1;
 	}
 	rif = kenwood_parse_if(resp);
 	if (rif == NULL) {
 		if (lock)
-			pthread_mutex_lock(&khf->cache_mtx);
+			mutex_lock(&khf->cache_mtx);
 		return -1;
 	}
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	khf->last_if = *rif;
 	if(!lock)
-		pthread_mutex_unlock(&khf->cache_mtx);
+		mutex_unlock(&khf->cache_mtx);
 	free(rif);
 	khf->last_if_tick = now;
 	return 0;
@@ -749,7 +746,7 @@ struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section)
 
 	if (khf == NULL || d == NULL)
 		return NULL;
-	if (pthread_mutex_init(&khf->cache_mtx, NULL) != 0) {
+	if (mutex_init(&khf->cache_mtx) != 0) {
 		free(khf);
 		return NULL;
 	}
@@ -793,7 +790,7 @@ void kenwood_hf_free(struct kenwood_hf *khf)
 {
 	if (khf == NULL)
 		return;
-	pthread_mutex_destroy(&khf->cache_mtx);
+	mutex_destroy(&khf->cache_mtx);
 	free(khf);
 }
 
@@ -832,12 +829,12 @@ static int disable_rit_xit(struct kenwood_hf *khf, bool xit)
 	if (resp == NULL)
 		return EINTR;
 	free(resp);
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	if (xit)
 		khf->last_if.xit_on = SW_OFF;
 	else
 		khf->last_if.rit_on = SW_OFF;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	return 0;
 }
 
@@ -861,7 +858,7 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	split = khf->last_if.split;
 	rit_on = khf->last_if.rit_on;
 	xit_on = khf->last_if.xit_on;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	// TODO: Ensure we're not changing bands too
 	switch(func) {
 		case FUNCTION_MEMORY:
@@ -877,18 +874,18 @@ int kenwood_hf_set_frequency(void *cbdata, uint64_t freq)
 	resp = kenwood_hf_command(khf, true, cmd, freq);
 	if (resp == NULL)
 		return ENODEV;
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	khf->last_if.freq = freq;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	if (split == SW_ON) {
 		resp = kenwood_hf_command(khf, true, KW_HF_CMD_SP, SW_OFF);
 		if (resp == NULL)
 			return EINTR;
 		free(resp);
-		pthread_mutex_lock(&khf->cache_mtx);
+		mutex_lock(&khf->cache_mtx);
 		khf->last_if.split = SW_OFF;
-		pthread_mutex_unlock(&khf->cache_mtx);
+		mutex_unlock(&khf->cache_mtx);
 	}
 	if (rit_on == SW_ON) {
 		ret = disable_rit_xit(khf, false);
@@ -923,7 +920,7 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	func = khf->last_if.function;
 	rit_on = khf->last_if.rit_on;
 	xit_on = khf->last_if.xit_on;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	switch(func) {
 		case FUNCTION_MEMORY:
 		case FUNCTION_COM:
@@ -940,9 +937,9 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	resp = kenwood_hf_command(khf, true, rx_cmd, freq_rx);
 	if (resp == NULL)
 		return ENODEV;
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	khf->last_if.freq = freq_rx;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	resp = kenwood_hf_command(khf, true, tx_cmd, freq_tx);
 	if (resp == NULL)
@@ -961,9 +958,9 @@ int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_SP, SW_ON);
 	if (resp == NULL)
 		return ENODEV;
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	khf->last_if.split = SW_ON;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	return 0;
 }
@@ -978,14 +975,13 @@ uint64_t kenwood_hf_get_frequency(void *cbdata)
 
 	kenwood_update_if(khf, true);
 	ret = khf->last_if.freq;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	return ret;
 }
 
 int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq)
 {
 	struct kenwood_hf			*khf = (struct kenwood_hf *)cbdata;
-	uint64_t					ret;
 	enum khf_function			func;
 	enum khf_sw					split;
 	enum khf_sw					rit_on;
@@ -1007,7 +1003,7 @@ int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx
 	xit_on = khf->last_if.xit_on;
 	rit = khf->last_if.rit;
 	tx = khf->last_if.tx;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	if (split == SW_OFF) {
 		if (rit_on == xit_on)
 			return EACCES;
@@ -1085,9 +1081,9 @@ int kenwood_hf_set_mode(void *cbdata, enum rig_modes rmode)
 	resp = kenwood_hf_command(khf, true, KW_HF_CMD_MD, mode);
 	if (resp == NULL)
 		return ENODEV;
-	pthread_mutex_lock(&khf->cache_mtx);
+	mutex_lock(&khf->cache_mtx);
 	khf->last_if.mode = mode;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	free(resp);
 	return 0;
 }
@@ -1095,12 +1091,11 @@ int kenwood_hf_set_mode(void *cbdata, enum rig_modes rmode)
 enum rig_modes kenwood_hf_get_mode(void *cbdata)
 {
 	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
-	int					ret;
 	enum khf_mode		mode;
 
 	kenwood_update_if(khf, true);
 	mode = khf->last_if.mode;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	switch (mode) {
 		case KHF_MODE_LSB:
 			return MODE_LSB;
@@ -1166,7 +1161,7 @@ enum vfos kenwood_hf_get_vfo(void *cbdata)
 
 	kenwood_update_if(khf, true);
 	cvfo = khf->last_if.function;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	switch (cvfo) {
 		case FUNCTION_VFO_A:
 			return VFO_A;
@@ -1214,7 +1209,7 @@ int kenwood_hf_get_ptt(void *cbdata)
 
 	kenwood_update_if(khf, true);
 	ret = khf->last_if.tx;
-	pthread_mutex_unlock(&khf->cache_mtx);
+	mutex_unlock(&khf->cache_mtx);
 	switch (ret) {
 		case SW_ON:
 			return 1;

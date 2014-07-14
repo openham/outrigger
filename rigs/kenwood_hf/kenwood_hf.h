@@ -109,7 +109,7 @@ struct kenwood_hf {
 	uint64_t			last_cmd_tick;
 	char				read_cmds[KW_HF_CMD_COUNT/8+1];
 	char				set_cmds[KW_HF_CMD_COUNT/8+1];
-	pthread_mutex_t		cache_mtx;
+	mutex_t				cache_mtx;
 	struct kenwood_if	last_if;
 	uint64_t			last_if_tick;
 	bool				hands_on;

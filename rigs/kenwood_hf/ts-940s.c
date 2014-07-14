@@ -37,7 +37,7 @@ static int ts940s_close(void *cbdata)
 {
 	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
 	struct io_response	*resp;
-	int					i, ret;
+	int					ret;
 
 	if (khf==NULL)
 		return EINVAL;
@@ -60,8 +60,6 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 {
 	struct rig				*ret = (struct rig *)calloc(1, sizeof(struct rig));
 	struct kenwood_hf		*khf;
-	struct io_response		*resp;
-	char					*key;
 
 	if (ret == NULL)
 		return NULL;
