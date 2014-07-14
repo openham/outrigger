@@ -367,15 +367,11 @@ static int serial_termios_select(struct io_serial_handle *hdl, bool wr, unsigned
 
 int serial_termios_wait_write(struct io_serial_handle *hdl, unsigned timeout)
 {
-	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
-
 	return serial_termios_select(hdl, true, timeout);
 }
 
 int serial_termios_wait_read(struct io_serial_handle *hdl, unsigned timeout)
 {
-	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
-
 	return serial_termios_select(hdl, false, timeout);
 }
 

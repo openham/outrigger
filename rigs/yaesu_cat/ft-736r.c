@@ -54,7 +54,6 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 {
 	struct rig			*ret = (struct rig *)calloc(1, sizeof(struct rig));
 	struct yaesu_bincat	*ybc;
-	struct io_response	*resp;
 
 	if (ret == NULL)
 		return NULL;

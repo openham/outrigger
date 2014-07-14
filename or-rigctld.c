@@ -624,7 +624,6 @@ int main(int argc, char **argv)
 {
 	int			i;
 	int			rig_count;
-	int			thread_count = 0;
 	dictionary	*d = NULL;
 	int			active_rig_count = 0;
 #ifdef WITH_FORK

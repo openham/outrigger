@@ -33,7 +33,6 @@
 uint64_t ms_ticks(void)
 {
 	struct timespec	ts;
-	uint64_t		ret;
 
 	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
 		return 0;

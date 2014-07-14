@@ -281,8 +281,6 @@ struct io_response *yaesu_bincat_command(struct yaesu_bincat *ybc, bool set, enu
  */
 void yaesu_bincat_handle_extra(void *handle, struct io_response *resp)
 {
-	struct yaesu_bincat	*ybc = (struct yaesu_bincat *)handle;
-
 	if (resp==NULL)
 		return;
 

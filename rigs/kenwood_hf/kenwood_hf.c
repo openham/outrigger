@@ -434,37 +434,6 @@ static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 }
 
 /*
- * Sends the format/params formatted using vasprintf() to the serial port
- */
-static int kenwood_sendvf(struct kenwood_hf *khf, const char *fmt, va_list params)
-{
-	int		len;
-	char	cmd[1024];
-	int		ret;
-
-	len = vsnprintf(cmd, sizeof(cmd), fmt, params);
-	if(len < 0 || len >= sizeof(cmd))
-		return -1;
-	ret = kenwood_send(khf, cmd, len);
-	free(cmd);
-	return ret;
-}
-
-/*
- * Sends the format/params formatted using vasprintf() to the serial port
- */
-static int kenwood_sendf(struct kenwood_hf *khf, const char *fmt, ...)
-{
-	va_list params;
-	int		ret;
-
-	va_start(params, fmt);
-	ret = kenwood_sendvf(khf, fmt, params);
-	va_end(params);
-	return ret;
-}
-
-/*
  * Sends the first cmdlen bytes of cmd to the serial port, then calls
  * kenwood_get_response() to wait for a response matching the first
  * matchlen bytes of match.
@@ -475,19 +444,6 @@ static int kenwood_sendf(struct kenwood_hf *khf, const char *fmt, ...)
 static struct io_response *kenwood_cmd_response(struct kenwood_hf *khf, const char *match, size_t matchlen, const char *cmd, size_t cmdlen)
 {
 	if (kenwood_send(khf, cmd, cmdlen) == -1)
-		return NULL;
-	return io_get_response(khf->handle, match, matchlen, 0);
-}
-
-static struct io_response *kenwood_cmdf_response(struct kenwood_hf *khf, const char *match, size_t matchlen, const char *cmd, ...)
-{
-	va_list params;
-	int		sret;
-
-	va_start(params, cmd);
-	sret = kenwood_sendvf(khf, cmd, params);
-	va_end(params);
-	if (sret == -1)
 		return NULL;
 	return io_get_response(khf->handle, match, matchlen, 0);
 }
