@@ -90,7 +90,7 @@ struct rig *init_rig(struct _dictionary_ *d, const char *section)
 	int			sret;
 	char		*rig;
 
-	sret = snprintf(key, sizeof(key), "%s:%s", section, key);
+	sret = snprintf(key, sizeof(key), "%s:rig", section);
 	if (sret < 0 || sret >= sizeof(key))
 		return NULL;
 	rig = iniparser_getstring(d, key, NULL);

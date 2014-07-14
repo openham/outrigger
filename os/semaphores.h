@@ -8,7 +8,7 @@ typedef HANDLE semaphore_t;
 
 #ifdef POSIX_SEMAPHORES
 #include <semaphore.h>
-typedef sem_t semaphore_t
+typedef sem_t semaphore_t;
 #endif
 
 int semaphore_init(semaphore_t *, unsigned);
