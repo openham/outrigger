@@ -494,7 +494,7 @@ void handle_command(struct connection *c, size_t len)
 			"\n"	// Attenuator settings
 			"0x0\n"	// has get func
 			"0x0\n" // has set func
-			"0x40100000\n"	// get level
+			"0x40000000\n"	// get level
 			"0x0\n"	// set level
 			"0x0\n"	// get param
 			"0x0\n" // set param
