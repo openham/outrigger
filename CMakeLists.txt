@@ -3,6 +3,7 @@ project (Outrigger)
 
 set(CMAKE_THREAD_PREFER_PTHREAD)
 find_package(Threads REQUIRED)
+list(APPEND CMAKE_REQUIRED_LIBRARIES c)
 
 include_directories(
 	api
@@ -28,6 +29,7 @@ set(SOURCES
 
 find_path(TERMIOS_PATH termios.h)
 find_path(UNISTD_PATH unistd.h)
+find_path(SIGNAL_PATH signal.h)
 
 if(CMAKE_USE_WIN32_THREADS_INIT)
 	list(APPEND SOURCES os/threads_win32.c)
@@ -54,7 +56,6 @@ if(UNISTD_PATH)
 		list(APPEND SOURCES os/semaphores_posix.c)
 		add_definitions(-DPOSIX_SEMAPHORES)
 	endif()
-	list(APPEND CMAKE_REQUIRED_LIBRARIES c)
 	check_symbol_exists(fork ${UNISTD_PATH}/unistd.h HAS_FORK)
 	if(HAS_FORK)
 		add_definitions(-DWITH_FORK)
@@ -77,6 +78,12 @@ if(WIN32)
 else()
 	list(APPEND SOURCES os/sockets_bsd)
 	add_definitions(-DBSD_SOCKETS)
+endif()
+if(SIGNAL_PATH)
+	check_symbol_exists(signal ${SIGNAL_PATH}/signal.h HAS_SIGNAL)
+	if(HAS_SIGNAL)
+		add_definitions(-DWITH_SIGNAL)
+	endif()
 endif()
 
 add_library(outrigger ${SOURCES})

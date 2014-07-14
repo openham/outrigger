@@ -30,6 +30,9 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
+#ifdef WITH_SIGNAL
+#include <signal.h>
+#endif
 
 #include <api.h>
 #include <iniparser.h>
@@ -517,10 +520,8 @@ void main_loop(void) {
 		}
 		// select()
 		ret = select(max_sock+1, &rx_set, &tx_set, &err_set, NULL);
-		if (ret==-1) {
-			fprintf(stderr, "Error %d selecting sockets!  Aborting.\n", errno);
+		if (ret==-1)
 			return;
-		}
 		if (ret == 0)
 			continue;
 		// Read/write data as appropriate...
@@ -620,6 +621,11 @@ void cleanup(void)
 	}
 }
 
+void die(int sig)
+{
+	exit(0);
+}
+
 int main(int argc, char **argv)
 {
 	int			i;
@@ -669,6 +675,26 @@ int main(int argc, char **argv)
 	}
 
 	atexit(cleanup);
+#ifdef WITH_SIGNAL
+	signal(SIGHUP, die);
+	signal(SIGINT, die);
+	signal(SIGKILL, die);
+	signal(SIGPIPE, die);
+	signal(SIGALRM, die);
+	signal(SIGTERM, die);
+	signal(SIGXCPU, die);
+	signal(SIGXFSZ, die);
+	signal(SIGVTALRM, die);
+	signal(SIGPROF, die);
+	signal(SIGUSR1, die);
+	signal(SIGUSR2, die);
+#ifdef SIGTHR
+	signal(SIGTHR, die);
+#endif
+#ifdef SIGLIBRT
+	signal(SIGLIBRT, die);
+#endif
+#endif
 
 	for (i=0; i<rig_count; i++) {
 #ifdef WITH_FORK
