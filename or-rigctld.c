@@ -61,6 +61,7 @@ struct connection {
 	char				*tx_buf;
 	size_t				tx_buf_size;
 	size_t				tx_buf_pos;
+	size_t				tx_buf_terminator;
 	struct connection	*next_connection;
 	struct connection	*prev_connection;
 };
@@ -153,14 +154,16 @@ void tx_append(struct connection *c, const char *str)
 	char	*buf;
 	size_t	len = strlen(str);
 
-	if ((c->tx_buf_size - c->tx_buf_pos) < len) {
+	if ((c->tx_buf_size - c->tx_buf_terminator) < len) {
 		buf = (char *)realloc(c->tx_buf, c->tx_buf_size + len);
 		if (buf == NULL)
 			return;
 		c->tx_buf = buf;
+		c->tx_buf[c->tx_buf_size] = 0;
 		c->tx_buf_size += len;
 	}
-	memcpy(c->tx_buf + c->tx_buf_pos, str, len);
+	memcpy(c->tx_buf + c->tx_buf_terminator, str, len);
+	c->tx_buf_terminator += len;
 }
 
 void tx_printf(struct connection *c, const char *format, ...)
@@ -472,33 +475,31 @@ void handle_command(struct connection *c, size_t len)
 	}
 	else if (strcmp(cmd, "\\dump_state")==0) {
 		// Output copied from the dummy driver...
-		tx_append(c,
-			"0\n"	// Protocol version
-			"1\n"	// Rig model (dummy)
-			"2\n"	// ITU region (!)
+		tx_append(c, "0\n");			// Protocol version
+		tx_append(c, "1\n");			// Rig model (dummy)
+		tx_append(c, "2\n");			// ITU region (!)
 			// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
-			"0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n"
+		tx_append(c, "0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n");
 			// Terminated with all zeros
-			"0 0 0 0 0 0 0\n"
+		tx_append(c, "0 0 0 0 0 0 0\n");
 			// TX info (as above)
-			"0 0 0 0 0 0 0\n"
+		tx_append(c, "0 0 0 0 0 0 0\n");
 			// Tuning steps available, modes, steps
-			"0 0\n"
+		tx_append(c, "0 0\n");
 			// Filter sizes, mode, bandwidth
-			"0 0\n"
-			"0\n"	// Max RIT
-			"0\n"	// Max XIT
-			"0\n"	// Max IF shift
-			"0\n"		// "announces"
-			"\n"		// Preamp settings
-			"\n"	// Attenuator settings
-			"0x0\n"	// has get func
-			"0x0\n" // has set func
-			"0x40000000\n"	// get level
-			"0x0\n"	// set level
-			"0x0\n"	// get param
-			"0x0\n" // set param
-		);
+		tx_append(c, "0 0\n");
+		tx_append(c, "0\n");			// Max RIT
+		tx_append(c, "0\n");			// Max XIT
+		tx_append(c, "0\n");			// Max IF shift
+		tx_append(c, "0\n");			// "announces"
+		tx_append(c, "\n");				// Preamp settings
+		tx_append(c, "\n");				// Attenuator settings
+		tx_append(c, "0x0\n");			// has get func
+		tx_append(c, "0x0\n");			// has set func
+		tx_printf(c, "0x%x\n", c->rig->get_smeter?0x40000000:0);	// get level
+		tx_append(c, "0x0\n");			// set level
+		tx_append(c, "0x0\n");			// get param
+		tx_append(c, "0x0\n");			// set param
 	}
 	else {
 		tx_append(c, "RPRT -1\n");
@@ -535,7 +536,7 @@ void main_loop(void) {
 			FD_SET(c->socket, &err_set);
 			if (c->socket > max_sock)
 				max_sock = c->socket;
-			if (c->tx_buf)
+			if (c->tx_buf_terminator)
 				FD_SET(c->socket, &tx_set);
 		}
 		// select()
@@ -552,15 +553,14 @@ void main_loop(void) {
 			}
 			// Next the writes
 			if (FD_ISSET(c->socket, &tx_set)) {
-				if (c->tx_buf != NULL) {
-					ret = send(c->socket, c->tx_buf + c->tx_buf_pos, c->tx_buf_size-c->tx_buf_pos, 0);
+				if (c->tx_buf != NULL && c->tx_buf_terminator) {
+					ret = send(c->socket, c->tx_buf + c->tx_buf_pos, c->tx_buf_terminator - c->tx_buf_pos, 0);
 					if (ret > 0) {
 						c->tx_buf_pos += ret;
-						if (c->tx_buf_pos >= c->tx_buf_size) {
-							free(c->tx_buf);
-							c->tx_buf = NULL;
+						if (c->tx_buf_pos >= c->tx_buf_terminator) {
 							c->tx_buf_size = 0;
 							c->tx_buf_pos = 0;
+							c->tx_buf_terminator = 0;
 						}
 					}
 					else if (ret < 0)
