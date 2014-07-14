@@ -262,7 +262,7 @@ int serial_termios_cts(struct io_serial_handle *hdl, bool *val)
 	if (val == NULL)
 		return EINVAL;
 
-	if (ioctl(thdl->fd, TIOCMGET, &state, sizeof(state)) == -1)
+	if (ioctl(thdl->fd, TIOCMGET, &state) == -1)
 		return errno;
 	*val = (state & TIOCM_CTS)?true:false;
 	return 0;
@@ -276,7 +276,7 @@ int serial_termios_dsr(struct io_serial_handle *hdl, bool *val)
 	if (val == NULL)
 		return EINVAL;
 
-	if (ioctl(thdl->fd, TIOCMGET, &state, sizeof(state)) == -1)
+	if (ioctl(thdl->fd, TIOCMGET, &state) == -1)
 		return errno;
 	*val = (state & TIOCM_DSR)?true:false;
 	return 0;
@@ -290,7 +290,7 @@ int serial_termios_cd(struct io_serial_handle *hdl, bool *val)
 	if (val == NULL)
 		return EINVAL;
 
-	if (ioctl(thdl->fd, TIOCMGET, &state, sizeof(state)) == -1)
+	if (ioctl(thdl->fd, TIOCMGET, &state) == -1)
 		return errno;
 	*val = (state & TIOCM_CD)?true:false;
 	return 0;
@@ -299,11 +299,11 @@ int serial_termios_cd(struct io_serial_handle *hdl, bool *val)
 int serial_termios_dtr(struct io_serial_handle *hdl, bool val)
 {
 	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
-	int	action;
-	int state = TIOCM_DTR;
+	unsigned long				action;
+	int							state = TIOCM_DTR;
 
 	action = val?TIOCMBIS:TIOCMBIC;
-	if (ioctl(thdl->fd, action, &state, sizeof(state)) == -1)
+	if (ioctl(thdl->fd, action, &state) == -1)
 		return errno;
 	return 0;
 }
@@ -311,11 +311,11 @@ int serial_termios_dtr(struct io_serial_handle *hdl, bool val)
 int serial_termios_rts(struct io_serial_handle *hdl, bool val)
 {
 	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
-	int	action;
-	int state = TIOCM_RTS;
+	unsigned long				action;
+	int							state = TIOCM_RTS;
 
 	action = val?TIOCMBIS:TIOCMBIC;
-	if (ioctl(thdl->fd, action, &state, sizeof(state)) == -1)
+	if (ioctl(thdl->fd, action, &state) == -1)
 		return errno;
 	return 0;
 }
@@ -412,7 +412,7 @@ int serial_termios_pending(struct io_serial_handle *hdl)
 	struct serial_termios_impl	*thdl = (struct serial_termios_impl *)hdl->handle;
 	int avail = 0;
 	
-	if (ioctl(thdl->fd, FIONREAD, &avail, sizeof(avail)) == -1) {
+	if (ioctl(thdl->fd, FIONREAD, &avail) == -1) {
 		fd_set			rfd;
 		struct timeval	tv = {};
 
