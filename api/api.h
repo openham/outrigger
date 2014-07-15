@@ -53,9 +53,18 @@ enum vfos {
 	VFO_COM			= 0x08	// TODO: This is TS-711/TS-811 specific... I don't know what this does!
 };
 
+struct bandlimit {
+	char				*name;
+	uint64_t			low;
+	uint64_t			high;
+	struct bandlimit	*next;
+};
+
 struct rig {
 	uint32_t	supported_modes;	// Bitmask of supported modes.
 	uint32_t	supported_vfos;		// Bitmask of supported VFOs.
+	struct bandlimit	*rx_limits;
+	struct bandlimit	*tx_limits;
 
 	/* Callbacks */
 	int (*close)(void *cbdata);
@@ -83,12 +92,13 @@ struct supported_rig {
 int set_default(struct _dictionary_ *d, const char *section, const char *key, const char *dflt);
 int getint(struct _dictionary_ *d, const char *section, const char *key, int dflt);
 char *getstring(struct _dictionary_ *d, const char *section, const char *key, char *dflt);
+uint64_t getuint64(struct _dictionary_ *d, const char *section, const char *key, uint64_t dflt);
 
 /*
  * Initializes the rig defined in the specified section of the
  * passed dictionary (parsed INI file)
  */
-struct rig *init_rig(struct _dictionary_ *d, const char *section);
+struct rig *init_rig(struct _dictionary_ *d, char *section);
 
 /*
  * Initializes the rig defined in the specified section of the

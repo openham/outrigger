@@ -87,39 +87,157 @@ char *getstring(struct _dictionary_ *d, const char *section, const char *key, ch
 	return ret;
 }
 
-struct rig *init_rig(struct _dictionary_ *d, const char *section)
+uint64_t getuint64(struct _dictionary_ *d, const char *section, const char *key, uint64_t dflt)
 {
-	int			i;
-	char		key[1024];
-	int			sret;
-	char		*rig;
+	uintmax_t	ret;
+	char		*value = getstring(d, section, key, NULL);
 
-	sret = snprintf(key, sizeof(key), "%s:rig", section);
-	if (sret < 0 || sret >= sizeof(key))
+	if (value == NULL)
+		return dflt;
+	ret = strtoumax(value, NULL, 10);
+	if (ret == UINTMAX_MAX)
+		return dflt;
+	if (ret > UINT64_MAX)
+		return UINT64_MAX;
+	return ret;
+}
+
+struct bandlimit *find_bandlimit_by_name(struct rig *rig, const char *name, bool tx)
+{
+	struct bandlimit *limit;
+
+	for (limit = tx?rig->tx_limits:rig->rx_limits; limit; limit = limit->next) {
+		if (strcmp(name, limit->name) == 0)
+			return limit;
+	}
+	return NULL;
+}
+
+struct bandlimit *find_bandlimit_by_freq(struct rig *rig, uint64_t freq, bool tx)
+{
+	struct bandlimit *limit;
+
+	for (limit = tx?rig->tx_limits:rig->rx_limits; limit; limit = limit->next) {
+		if (freq >= limit->low && freq <= limit->high)
+			return limit;
+	}
+	return NULL;
+}
+
+struct bandlimit *new_bandlimit(struct rig *rig, char *name, bool tx)
+{
+	struct bandlimit *limit;
+
+	limit = (struct bandlimit *)calloc(1, sizeof(struct bandlimit));
+	if (limit == NULL)
 		return NULL;
-	rig = iniparser_getstring(d, key, NULL);
-	if (rig==NULL)
+	limit->name = name;
+	limit->high = UINT64_MAX;
+	limit->low = 0;
+	if (tx) {
+		limit->next = rig->tx_limits;
+		rig->tx_limits = limit;
+	}
+	else {
+		limit->next = rig->rx_limits;
+		rig->rx_limits = limit;
+	}
+	return limit;
+}
+
+struct rig *init_rig(struct _dictionary_ *d, char *section)
+{
+	int					i;
+	char				*rig_name;
+	struct rig			*rig;
+	int					key_count;
+	char				**keys;
+	size_t				slen;
+	struct bandlimit	*limit;
+
+	rig_name = getstring(d, section, "rig", NULL);
+	if (rig_name==NULL)
 		return NULL;
 	for (i=0; supported_rigs[i].init != NULL; i++) {
-		if (strcmp(supported_rigs[i].name, rig)==0)
+		if (strcmp(supported_rigs[i].name, rig_name)==0)
 			break;
 	}
 	if (supported_rigs[i].init == NULL)
 		return NULL;
-	return supported_rigs[i].init(d, section);
+	rig = supported_rigs[i].init(d, section);
+	if (rig != NULL) {
+		slen = strlen(section);
+		slen++;
+		// Fill in band edges.
+		key_count = iniparser_getsecnkeys(d, section);
+		keys = iniparser_getseckeys(d, section);
+		for (i=0; i<key_count; i++) {
+			if (strncmp(keys[i]+slen, "rx_bandlimit_low_", 17) == 0) {
+				limit = find_bandlimit_by_name(rig, keys[i]+slen+17, false);
+				if (limit == NULL)
+					limit = new_bandlimit(rig, keys[i]+slen+17, false);
+				if (limit == NULL) {
+					close_rig(rig);
+					return NULL;
+				}
+				limit->low = getuint64(d, section, keys[i]+slen, 0);
+			}
+			else if (strncmp(keys[i]+slen, "rx_bandlimit_high_", 18) == 0) {
+				limit = find_bandlimit_by_name(rig, keys[i]+slen+18, false);
+				if (limit == NULL)
+					limit = new_bandlimit(rig, keys[i]+slen+18, false);
+				if (limit == NULL) {
+					close_rig(rig);
+					return NULL;
+				}
+				limit->high = getuint64(d, section, keys[i]+slen, UINT64_MAX);
+			}
+			if (strncmp(keys[i]+slen, "tx_bandlimit_low_", 17) == 0) {
+				limit = find_bandlimit_by_name(rig, keys[i]+slen+17, true);
+				if (limit == NULL)
+					limit = new_bandlimit(rig, keys[i]+slen+17, true);
+				if (limit == NULL) {
+					close_rig(rig);
+					return NULL;
+				}
+				limit->low = getuint64(d, section, keys[i]+slen, 0);
+			}
+			else if (strncmp(keys[i]+slen, "tx_bandlimit_high_", 18) == 0) {
+				limit = find_bandlimit_by_name(rig, keys[i]+slen+18, true);
+				if (limit == NULL)
+					limit = new_bandlimit(rig, keys[i]+slen+18, true);
+				if (limit == NULL) {
+					close_rig(rig);
+					return NULL;
+				}
+				limit->high = getuint64(d, section, keys[i]+slen, UINT64_MAX);
+			}
+		}
+	}
+	return rig;
 }
 
 int close_rig(struct rig *rig)
 {
 	int	ret;
+	struct bandlimit	*limit, *next_limit;
 
 	if (rig == NULL)
 		return EINVAL;
 	if (rig->close == NULL)
 		return 0;
 	ret = rig->close(rig->cbdata);
-	if (ret==0)
+	if (ret==0) {
+		for (limit = rig->tx_limits; limit; limit = next_limit) {
+			next_limit = limit->next;
+			free(limit);
+		}
+		for (limit = rig->rx_limits; limit; limit = next_limit) {
+			next_limit = limit->next;
+			free(limit);
+		}
 		free(rig);
+	}
 	return ret;
 }
 
@@ -129,6 +247,8 @@ int set_frequency(struct rig *rig, uint64_t freq)
 		return EINVAL;
 	if (rig->set_frequency == NULL)
 		return ENOTSUP;
+	if (find_bandlimit_by_freq(rig, freq, false) == NULL)
+		return EINVAL;
 	return rig->set_frequency(rig->cbdata, freq);
 }
 
@@ -138,6 +258,10 @@ int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx)
 		return EINVAL;
 	if (rig->set_split_frequency == NULL)
 		return ENOTSUP;
+	if (find_bandlimit_by_freq(rig, freq_rx, false) == NULL)
+		return EINVAL;
+	if (find_bandlimit_by_freq(rig, freq_tx, false) == NULL)
+		return EINVAL;
 	return rig->set_split_frequency(rig->cbdata, freq_rx, freq_tx);
 }
 

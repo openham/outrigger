@@ -516,6 +516,8 @@ int yaesu_bincat_get_smeter(void *cbdata)
 	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
 	int					ret;
 
+	if (ybc->ptt)
+		return 0;
 	resp = yaesu_bincat_command(ybc, false, Y_BC_CMD_TEST_S_METER);
 	if (resp == NULL)
 		return -1;

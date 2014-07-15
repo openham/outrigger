@@ -317,6 +317,7 @@ void handle_command(struct connection *c, size_t len)
 	int				ret;
 	enum rig_modes	mode;
 	enum vfos		vfo;
+	struct bandlimit *limit;
 
 	// First, clean up the buffer...
 	if (remain) {
@@ -554,13 +555,16 @@ void handle_command(struct connection *c, size_t len)
 			case '\x8f':
 				// Output copied from the dummy driver...
 				tx_append(c, "0\n");			// Protocol version
-				tx_append(c, "1\n");			// Rig model (dummy)
+				tx_append(c, "2\n");			// Rig model (dummy)
 				tx_append(c, "2\n");			// ITU region (!)
 					// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
-				tx_append(c, "0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n");
+				for (limit = c->rig->rx_limits; limit; limit = limit->next)
+					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff -1 -1 0x10000003 0x01\n", limit->low, limit->high);
 					// Terminated with all zeros
 				tx_append(c, "0 0 0 0 0 0 0\n");
 					// TX info (as above)
+				for (limit = c->rig->tx_limits; limit; limit = limit->next)
+					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff 0 100 0x10000003 0x01\n", limit->low, limit->high);
 				tx_append(c, "0 0 0 0 0 0 0\n");
 					// Tuning steps available, modes, steps
 				tx_append(c, "0 0\n");

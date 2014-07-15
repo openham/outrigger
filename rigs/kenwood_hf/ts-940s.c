@@ -71,6 +71,26 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	set_default(d, section, "stopbits", "2");
 	set_default(d, section, "parity", "None");
 	set_default(d, section, "flow", "CTSRTS");
+	set_default(d, section, "rx_bandlimit_low_hf", "30000");
+	set_default(d, section, "rx_bandlimit_high_hf", "30000000");
+	set_default(d, section, "tx_bandlimit_low_160m", "1800000");
+	set_default(d, section, "tx_bandlimit_high_160m", "2000000");
+	set_default(d, section, "tx_bandlimit_low_80m", "3500000");
+	set_default(d, section, "tx_bandlimit_high_80m", "4000000");
+	set_default(d, section, "tx_bandlimit_low_40m", "7000000");
+	set_default(d, section, "tx_bandlimit_high_40m", "7300000");
+	set_default(d, section, "tx_bandlimit_low_30m", "10100000");
+	set_default(d, section, "tx_bandlimit_high_30m", "10150000");
+	set_default(d, section, "tx_bandlimit_low_20m", "14000000");
+	set_default(d, section, "tx_bandlimit_high_20m", "14350000");
+	set_default(d, section, "tx_bandlimit_low_17m", "18068000");
+	set_default(d, section, "tx_bandlimit_high_17m", "18180000");
+	set_default(d, section, "tx_bandlimit_low_15m", "21000000");
+	set_default(d, section, "tx_bandlimit_high_15m", "21450000");
+	set_default(d, section, "tx_bandlimit_low_12m", "24890000");
+	set_default(d, section, "tx_bandlimit_high_12m", "24990000");
+	set_default(d, section, "tx_bandlimit_low_10m", "28000000");
+	set_default(d, section, "tx_bandlimit_high_10m", "29700000");
 
 	khf = kenwood_hf_new(d, section);
 	if (khf == NULL) {

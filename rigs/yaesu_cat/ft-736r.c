@@ -65,6 +65,14 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 	set_default(d, section, "stopbits", "2");
 	set_default(d, section, "parity", "None");
 	set_default(d, section, "flow", "CTSRTS");
+	set_default(d, section, "rx_bandlimit_low_2m", "144000000");
+	set_default(d, section, "rx_bandlimit_high_2m", "147999990");
+	set_default(d, section, "rx_bandlimit_low_70cm", "430000000");
+	set_default(d, section, "rx_bandlimit_high_70cm", "449999990");
+	set_default(d, section, "tx_bandlimit_low_2m", "144000000");
+	set_default(d, section, "tx_bandlimit_high_2m", "147999990");
+	set_default(d, section, "tx_bandlimit_low_70cm", "430000000");
+	set_default(d, section, "tx_bandlimit_high_70cm", "449999990");
 
 	ybc = yaesu_bincat_new(d, section);
 	if (ybc == NULL) {
