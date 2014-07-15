@@ -196,7 +196,8 @@ void tx_rprt(struct connection *c, int ret)
 
 void handle_command(struct connection *c, size_t len)
 {
-	char			*cmd = strdup(c->rx_buf);
+	char			*cmdline = strdup(c->rx_buf);
+	char			*cmd;
 	char			*arg;
 	size_t			remain = c->rx_buf_size - (c->rx_buf_pos + len + 1);
 	uint64_t		u64;
@@ -207,7 +208,7 @@ void handle_command(struct connection *c, size_t len)
 	enum rig_modes	mode;
 	enum vfos		vfo;
 
-	buf = strchr(cmd, '\r');
+	buf = strchr(cmdline, '\r');
 	if (buf)
 		*buf = 0;
 
@@ -222,290 +223,329 @@ void handle_command(struct connection *c, size_t len)
 		c->rx_buf_size = 0;
 		c->rx_buf = NULL;
 	}
-	// Now handle the command...
-	if ((strncmp(cmd, "F ", 2) == 0) || (strncmp(cmd, "set_freq ", 9) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		if (sscanf(arg, "%"SCNu64, &u64) != 1)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_rprt(c, set_frequency(c->rig, u64));
-	}
-	else if ((strncmp(cmd, "I ", 2) == 0) || (strncmp(cmd, "set_split_freq ", 15) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		if (sscanf(arg, "%"SCNu64, &u64) != 1)
-			tx_append(c, "RPRT -1\n");
-		else {
-			ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
-			if (ret != 0)
-				tx_rprt(c, ret);
-			else
-				tx_rprt(c, set_split_frequency(c->rig, rx_freq, u64));
-		}
-	}
-	else if ((strcmp(cmd, "f") == 0) || (strcmp(cmd, "get_freq") == 0)) {
-		u64 = get_frequency(c->rig);
-		if (u64 == 0)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_printf(c, "%"PRIu64"\n", u64);
-	}
-	else if ((strcmp(cmd, "i") == 0) || (strcmp(cmd, "get_split_freq") == 0)) {
-		ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
-		if (ret != 0) {
-			tx_freq = get_frequency(c->rig);
-			if (tx_freq != 0) {
+	// Now handle the commands...
+	for (cmd = cmdline; *cmd;) {
+		if ((strncmp(cmd, "F ", 2) == 0) || (strncmp(cmd, "\\set_freq ", 10) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			if (sscanf(arg, "%"SCNu64, &u64) != 1)
 				tx_append(c, "RPRT -1\n");
-				goto finish;
+			else
+				tx_rprt(c, set_frequency(c->rig, u64));
+			*cmd = 0;
+		}
+		else if ((strncmp(cmd, "I ", 2) == 0) || (strncmp(cmd, "\\set_split_freq ", 16) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			if (sscanf(arg, "%"SCNu64, &u64) != 1)
+				tx_append(c, "RPRT -1\n");
+			else {
+				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+				if (ret != 0)
+					tx_rprt(c, ret);
+				else
+					tx_rprt(c, set_split_frequency(c->rig, rx_freq, u64));
 			}
+			*cmd = 0;
 		}
-		tx_printf(c, "%"PRIu64"\n", tx_freq);
-	}
-	else if ((strncmp(cmd, "M ", 2) == 0) || (strncmp(cmd, "set_mode ", 9) == 0) || (strncmp(cmd, "X ", 2) == 0) || (strncmp(cmd, "set_split_mode ", 15) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		mode = MODE_UNKNOWN;
-		if (strncmp(arg, "USB ", 4)==0)
-			mode = MODE_USB;
-		else if (strncmp(arg, "LSB ", 4)==0)
-			mode = MODE_LSB;
-		else if (strncmp(arg, "CW ", 3)==0)
-			mode = MODE_CW;
-		else if (strncmp(arg, "CWR ", 4)==0)
-			mode = MODE_CWR;
-		else if (strncmp(arg, "RTTY ", 5)==0)
-			mode = MODE_FSK;
-		else if (strncmp(arg, "AM ", 3)==0)
-			mode = MODE_AM;
-		else if (strncmp(arg, "FM ", 3)==0)
-			mode = MODE_FM;
-		if (mode == MODE_UNKNOWN)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_rprt(c, set_mode(c->rig, mode));
-	}
-	else if ((strcmp(cmd, "m") == 0) || (strcmp(cmd, "get_mode") == 0) || (strcmp(cmd, "x") == 0) || (strcmp(cmd, "get_split_mode") == 0)) {
-		mode = get_mode(c->rig);
-		switch (mode) {
-			case MODE_USB:
-				buf="USB";
-				break;
-			case MODE_LSB:
-				buf="LSB";
-				break;
-			case MODE_CW:
-				buf="CW";
-				break;
-			case MODE_CWR:
-				buf="CWR";
-				break;
-			case MODE_FSK:
-				buf="RTTY";
-				break;
-			case MODE_AM:
-				buf="AM";
-				break;
-			case MODE_FM:
-				buf="FM";
-				break;
-			default:
-				buf=NULL;
-				break;
-		}
-		if (buf == NULL)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_printf(c, "%s\n0\n", buf);
-	}
-	else if ((strncmp(cmd, "V ", 2) == 0) || (strncmp(cmd, "set_vfo ", 8) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		vfo = VFO_UNKNOWN;
-		if ((strcmp(arg, "VFOA")==0) || (strcmp(arg, "VFO")==0))
-			vfo = VFO_A;
-		else if (strcmp(arg, "VFOB")==0)
-			vfo = VFO_B;
-		else if (strcmp(arg, "MEM")==0)
-			vfo = VFO_MEMORY;
-		if (vfo == VFO_UNKNOWN)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_rprt(c, set_vfo(c->rig, vfo));
-	}
-	else if ((strncmp(cmd, "S ", 2) == 0) || (strncmp(cmd, "set_split_vfo ", 14) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		if (sscanf(arg, "%d", &i) != 1) {
-			tx_append(c, "RPRT -1\n");
-			goto finish;
-		}
-		if (i==0) {
+		else if (*cmd == 'f' || (strcmp(cmd, "\\get_freq") == 0)) {
 			u64 = get_frequency(c->rig);
 			if (u64 == 0)
 				tx_append(c, "RPRT -1\n");
 			else
-				tx_rprt(c, set_frequency(c->rig, u64));
+				tx_printf(c, "%"PRIu64"\n", u64);
+			if(*cmd=='f')
+				cmd++;
 		}
-		else {
-			// "Enable split"
-			// First, switch to the "other" VFO to get the frequency
-			vfo = get_vfo(c->rig);
-			rx_freq = get_frequency(c->rig);
-			if (rx_freq == 0) {
-				tx_append(c, "RPRT -1\n");
-				goto finish;
+		else if (*cmd == 'i' || (strcmp(cmd, "\\get_split_freq") == 0)) {
+			ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+			if (ret != 0) {
+				tx_freq = get_frequency(c->rig);
+				if (tx_freq != 0) {
+					tx_append(c, "RPRT -1\n");
+					goto finish;
+				}
 			}
-			switch (vfo) {
-				case VFO_A:
-					if (set_vfo(c->rig, VFO_B) != 0) {
-						tx_append(c, "RPRT -1\n");
-						goto finish;
-					}
+			tx_printf(c, "%"PRIu64"\n", tx_freq);
+			if(*cmd=='i')
+				cmd++;
+			else
+				*cmd=0;
+		}
+		else if ((strncmp(cmd, "M ", 2) == 0) || (strncmp(cmd, "\\set_mode ", 10) == 0) || (strncmp(cmd, "X ", 2) == 0) || (strncmp(cmd, "\\set_split_mode ", 16) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			mode = MODE_UNKNOWN;
+			if (strncmp(arg, "USB ", 4)==0)
+				mode = MODE_USB;
+			else if (strncmp(arg, "LSB ", 4)==0)
+				mode = MODE_LSB;
+			else if (strncmp(arg, "CW ", 3)==0)
+				mode = MODE_CW;
+			else if (strncmp(arg, "CWR ", 4)==0)
+				mode = MODE_CWR;
+			else if (strncmp(arg, "RTTY ", 5)==0)
+				mode = MODE_FSK;
+			else if (strncmp(arg, "AM ", 3)==0)
+				mode = MODE_AM;
+			else if (strncmp(arg, "FM ", 3)==0)
+				mode = MODE_FM;
+			if (mode == MODE_UNKNOWN)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_rprt(c, set_mode(c->rig, mode));
+			*cmd = 0;
+		}
+		else if (*cmd == 'm' || (strcmp(cmd, "\\get_mode") == 0) || (strcmp(cmd, "x") == 0) || (strcmp(cmd, "\\get_split_mode") == 0)) {
+			mode = get_mode(c->rig);
+			switch (mode) {
+				case MODE_USB:
+					buf="USB";
 					break;
-				case VFO_B:
-					if (set_vfo(c->rig, VFO_A) != 0) {
-						tx_append(c, "RPRT -1\n");
-						goto finish;
-					}
+				case MODE_LSB:
+					buf="LSB";
+					break;
+				case MODE_CW:
+					buf="CW";
+					break;
+				case MODE_CWR:
+					buf="CWR";
+					break;
+				case MODE_FSK:
+					buf="RTTY";
+					break;
+				case MODE_AM:
+					buf="AM";
+					break;
+				case MODE_FM:
+					buf="FM";
 					break;
 				default:
+					buf=NULL;
 					break;
 			}
-			tx_freq = get_frequency(c->rig);
-			if (tx_freq == 0) {
+			if (buf == NULL)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_printf(c, "%s\n0\n", buf);
+			if(*cmd=='m' || *cmd == 'x')
+				cmd++;
+			else
+				*cmd=0;
+		}
+		else if ((strncmp(cmd, "V ", 2) == 0) || (strncmp(cmd, "\\set_vfo ", 9) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			vfo = VFO_UNKNOWN;
+			if ((strcmp(arg, "VFOA")==0) || (strcmp(arg, "VFO")==0))
+				vfo = VFO_A;
+			else if (strcmp(arg, "VFOB")==0)
+				vfo = VFO_B;
+			else if (strcmp(arg, "MEM")==0)
+				vfo = VFO_MEMORY;
+			if (vfo == VFO_UNKNOWN)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_rprt(c, set_vfo(c->rig, vfo));
+			*cmd = 0;
+		}
+		else if ((strncmp(cmd, "S ", 2) == 0) || (strncmp(cmd, "\\set_split_vfo ", 15) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			if (sscanf(arg, "%d", &i) != 1) {
 				tx_append(c, "RPRT -1\n");
 				goto finish;
 			}
-			// Now switch back
-			if (set_vfo(c->rig, vfo) != 0) {
-				tx_append(c, "RPRT -1\n");
-				goto finish;
+			if (i==0) {
+				u64 = get_frequency(c->rig);
+				if (u64 == 0)
+					tx_append(c, "RPRT -1\n");
+				else
+					tx_rprt(c, set_frequency(c->rig, u64));
 			}
-			// And finally, set the split.
-			tx_rprt(c, set_split_frequency(c->rig, rx_freq, tx_freq));
+			else {
+				// "Enable split"
+				// First, switch to the "other" VFO to get the frequency
+				vfo = get_vfo(c->rig);
+				rx_freq = get_frequency(c->rig);
+				if (rx_freq == 0) {
+					tx_append(c, "RPRT -1\n");
+					goto finish;
+				}
+				switch (vfo) {
+					case VFO_A:
+						if (set_vfo(c->rig, VFO_B) != 0) {
+							tx_append(c, "RPRT -1\n");
+							goto finish;
+						}
+						break;
+					case VFO_B:
+						if (set_vfo(c->rig, VFO_A) != 0) {
+							tx_append(c, "RPRT -1\n");
+							goto finish;
+						}
+						break;
+					default:
+						break;
+				}
+				tx_freq = get_frequency(c->rig);
+				if (tx_freq == 0) {
+					tx_append(c, "RPRT -1\n");
+					goto finish;
+				}
+				// Now switch back
+				if (set_vfo(c->rig, vfo) != 0) {
+					tx_append(c, "RPRT -1\n");
+					goto finish;
+				}
+				// And finally, set the split.
+				tx_rprt(c, set_split_frequency(c->rig, rx_freq, tx_freq));
+			}
+			*cmd=0;
 		}
-	}
-	else if ((strcmp(cmd, "v") == 0) || (strcmp(cmd, "get_vfo") == 0)) {
-		vfo = get_vfo(c->rig);
-		switch(vfo) {
-			case VFO_A:
-				buf = "VFOA";
-				break;
-			case VFO_B:
-				buf = "VFOB";
-				break;
-			case VFO_MEMORY:
-				buf = "MEM";
-				break;
-			default:
-				buf = NULL;
-				break;
-		}
-		if (buf == NULL)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_printf(c, "%s\n", buf);
-	}
-	else if ((strcmp(cmd, "s") == 0) || (strcmp(cmd, "get_split_vfo") == 0)) {
-		ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
-		vfo = get_vfo(c->rig);
-		switch(vfo) {
-			case VFO_A:
-				buf = ret==0?"VFOB":"VFOA";
-				break;
-			case VFO_B:
-				buf = ret==0?"VFOA":"VFOB";
-				break;
-			case VFO_MEMORY:
-				buf = "MEM";
-				break;
-			default:
-				buf = NULL;
-				break;
-		}
-		if (buf == NULL)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_printf(c, "%d\n%s\n", ret==0?1:0, buf);
-	}
-	else if ((strncmp(cmd, "T ", 2) == 0) || (strncmp(cmd, "set_ptt ", 8) == 0)) {
-		arg = strchr(cmd, ' ');
-		arg++;
-		if (sscanf(arg, "%d", &i) != 1)
-			tx_append(c, "RPRT -1\n");
-		else
-			tx_rprt(c, set_ptt(c->rig, i));
-	}
-	else if ((strcmp(cmd, "t") == 0) || (strcmp(cmd, "get_ptt") == 0)) {
-		switch (get_ptt(c->rig)) {
-			case 0:
-				tx_append(c, "0\n");
-				break;
-			case 1:
-				tx_append(c, "1\n");
-				break;
-			default:
+		else if (*cmd == 'v' || (strcmp(cmd, "\\get_vfo") == 0)) {
+			vfo = get_vfo(c->rig);
+			switch(vfo) {
+				case VFO_A:
+					buf = "VFOA";
+					break;
+				case VFO_B:
+					buf = "VFOB";
+					break;
+				case VFO_MEMORY:
+					buf = "MEM";
+					break;
+				default:
+					buf = NULL;
+					break;
+			}
+			if (buf == NULL)
 				tx_append(c, "RPRT -1\n");
-				break;
+			else
+				tx_printf(c, "%s\n", buf);
+			if(*cmd=='v')
+				cmd++;
+			else
+				*cmd=0;
 		}
-	}
-	else if (strcmp(cmd, "chk_vfo")==0) {
-		tx_append(c, "CHKVFO 0\n");
-	}
-	else if ((cmd[0]=='\x8b' && cmd[1]==0) || (strcmp(cmd, "get_dcd") == 0)) {
-		switch (get_squelch(c->rig)) {
-			case 0:
-				tx_append(c, "0\n");
-				break;
-			case 1:
-				tx_append(c, "1\n");
-				break;
-			default:
+		else if (*cmd == 's' || (strcmp(cmd, "\\get_split_vfo") == 0)) {
+			ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+			vfo = get_vfo(c->rig);
+			switch(vfo) {
+				case VFO_A:
+					buf = ret==0?"VFOB":"VFOA";
+					break;
+				case VFO_B:
+					buf = ret==0?"VFOA":"VFOB";
+					break;
+				case VFO_MEMORY:
+					buf = "MEM";
+					break;
+				default:
+					buf = NULL;
+					break;
+			}
+			if (buf == NULL)
 				tx_append(c, "RPRT -1\n");
-				break;
+			else
+				tx_printf(c, "%d\n%s\n", ret==0?1:0, buf);
+			if(*cmd=='s')
+				cmd++;
+			else
+				*cmd=0;
 		}
-	}
-	else if ((strcmp(cmd, "l STRENGTH") == 0) || (strcmp(cmd, "get_level STRENGTH") == 0)) {
-		i = get_smeter(c->rig);
-		if ( i == -1)
+		else if ((strncmp(cmd, "T ", 2) == 0) || (strncmp(cmd, "\\set_ptt ", 9) == 0)) {
+			arg = strchr(cmd, ' ');
+			arg++;
+			if (sscanf(arg, "%d", &i) != 1)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_rprt(c, set_ptt(c->rig, i));
+			*cmd=0;
+		}
+		else if (*cmd == 't' || (strcmp(cmd, "\\get_ptt") == 0)) {
+			switch (get_ptt(c->rig)) {
+				case 0:
+					tx_append(c, "0\n");
+					break;
+				case 1:
+					tx_append(c, "1\n");
+					break;
+				default:
+					tx_append(c, "RPRT -1\n");
+					break;
+			}
+			if(*cmd=='t')
+				cmd++;
+			else
+				*cmd=0;
+		}
+		else if (strcmp(cmd, "\\chk_vfo")==0) {
+			tx_append(c, "CHKVFO 0\n");
+		}
+		else if (*cmd == '\x8b' || (strcmp(cmd, "\\get_dcd") == 0)) {
+			switch (get_squelch(c->rig)) {
+				case 0:
+					tx_append(c, "0\n");
+					break;
+				case 1:
+					tx_append(c, "1\n");
+					break;
+				default:
+					tx_append(c, "RPRT -1\n");
+					break;
+			}
+			if(*cmd=='\x8b')
+				cmd++;
+			else
+				*cmd=0;
+		}
+		else if ((strcmp(cmd, "l STRENGTH") == 0) || (strcmp(cmd, "\\get_level STRENGTH") == 0)) {
+			i = get_smeter(c->rig);
+			if ( i == -1)
+				tx_append(c, "RPRT -1\n");
+			else
+				tx_printf(c, "%d\n", i-49);
+			*cmd = 0;
+		}
+		else if (strcmp(cmd, "\\dump_state")==0) {
+			// Output copied from the dummy driver...
+			tx_append(c, "0\n");			// Protocol version
+			tx_append(c, "1\n");			// Rig model (dummy)
+			tx_append(c, "2\n");			// ITU region (!)
+				// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
+			tx_append(c, "0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n");
+				// Terminated with all zeros
+			tx_append(c, "0 0 0 0 0 0 0\n");
+				// TX info (as above)
+			tx_append(c, "0 0 0 0 0 0 0\n");
+				// Tuning steps available, modes, steps
+			tx_append(c, "0 0\n");
+				// Filter sizes, mode, bandwidth
+			tx_append(c, "0 0\n");
+			tx_append(c, "0\n");			// Max RIT
+			tx_append(c, "0\n");			// Max XIT
+			tx_append(c, "0\n");			// Max IF shift
+			tx_append(c, "0\n");			// "announces"
+			tx_append(c, "\n");				// Preamp settings
+			tx_append(c, "\n");				// Attenuator settings
+			tx_append(c, "0x0\n");			// has get func
+			tx_append(c, "0x0\n");			// has set func
+			tx_printf(c, "0x%x\n", c->rig->get_smeter?0x40000000:0);	// get level
+			tx_append(c, "0x0\n");			// set level
+			tx_append(c, "0x0\n");			// get param
+			tx_append(c, "0x0\n");			// set param
+		}
+		else if(*cmd == ' ') {
+			cmd++;
+		}
+		else {
 			tx_append(c, "RPRT -1\n");
-		else
-			tx_printf(c, "%d\n", i-49);
-	}
-	else if (strcmp(cmd, "\\dump_state")==0) {
-		// Output copied from the dummy driver...
-		tx_append(c, "0\n");			// Protocol version
-		tx_append(c, "1\n");			// Rig model (dummy)
-		tx_append(c, "2\n");			// ITU region (!)
-			// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
-		tx_append(c, "0 9999999999999 0x1ff -1 -1 0x10000003 0x01\n");
-			// Terminated with all zeros
-		tx_append(c, "0 0 0 0 0 0 0\n");
-			// TX info (as above)
-		tx_append(c, "0 0 0 0 0 0 0\n");
-			// Tuning steps available, modes, steps
-		tx_append(c, "0 0\n");
-			// Filter sizes, mode, bandwidth
-		tx_append(c, "0 0\n");
-		tx_append(c, "0\n");			// Max RIT
-		tx_append(c, "0\n");			// Max XIT
-		tx_append(c, "0\n");			// Max IF shift
-		tx_append(c, "0\n");			// "announces"
-		tx_append(c, "\n");				// Preamp settings
-		tx_append(c, "\n");				// Attenuator settings
-		tx_append(c, "0x0\n");			// has get func
-		tx_append(c, "0x0\n");			// has set func
-		tx_printf(c, "0x%x\n", c->rig->get_smeter?0x40000000:0);	// get level
-		tx_append(c, "0x0\n");			// set level
-		tx_append(c, "0x0\n");			// get param
-		tx_append(c, "0x0\n");			// set param
-	}
-	else {
-		tx_append(c, "RPRT -1\n");
+			*cmd = 0;
+		}
 	}
 finish:
-	free(cmd);
+	free(cmdline);
 }
 
 void main_loop(void) {
