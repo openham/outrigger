@@ -260,9 +260,22 @@ int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx)
 		return ENOTSUP;
 	if (find_bandlimit_by_freq(rig, freq_rx, false) == NULL)
 		return EINVAL;
-	if (find_bandlimit_by_freq(rig, freq_tx, false) == NULL)
+	if (find_bandlimit_by_freq(rig, freq_tx, true) == NULL)
 		return EINVAL;
 	return rig->set_split_frequency(rig->cbdata, freq_rx, freq_tx);
+}
+
+int set_duplex(struct rig *rig, uint64_t freq_rx, enum rig_modes mode_rx, uint64_t freq_tx, enum rig_modes mode_tx)
+{
+	if (rig == NULL)
+		return EINVAL;
+	if (rig->set_duplex == NULL)
+		return ENOTSUP;
+	if (find_bandlimit_by_freq(rig, freq_rx, false) == NULL)
+		return EINVAL;
+	if (find_bandlimit_by_freq(rig, freq_tx, true) == NULL)
+		return EINVAL;
+	return rig->set_duplex(rig->cbdata, freq_rx, mode_rx, freq_tx, mode_tx);
 }
 
 uint64_t get_frequency(struct rig *rig)
@@ -281,6 +294,15 @@ int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx)
 	if (rig->get_split_frequency == NULL)
 		return ENOTSUP;
 	return rig->get_split_frequency(rig->cbdata, freq_rx, freq_tx);
+}
+
+int get_duplex(struct rig *rig, uint64_t *freq_rx, enum rig_modes *mode_rx, uint64_t *freq_tx, enum rig_modes *mode_tx)
+{
+	if (rig == NULL || freq_rx == NULL || freq_tx == NULL)
+		return EINVAL;
+	if (rig->get_duplex == NULL)
+		return ENOTSUP;
+	return rig->get_duplex(rig->cbdata, freq_rx, mode_rx, freq_tx, mode_tx);
 }
 
 int set_mode(struct rig *rig, enum rig_modes mode)

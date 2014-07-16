@@ -81,12 +81,14 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 	}
 	ret->supported_modes = MODE_CW | MODE_CWN | 
 			MODE_LSB | MODE_USB | MODE_FM | MODE_FMN;
-	ret->supported_vfos = VFO_A;
+	ret->supported_vfos = VFO_A|VFO_MAIN|VFO_SUB;
 	ret->close = ft736r_close;
 	ret->set_frequency = yaesu_bincat_set_frequency;
 	ret->get_frequency = yaesu_bincat_get_frequency;
 	ret->set_split_frequency = yaesu_bincat_set_split_frequency;
 	ret->get_split_frequency = yaesu_bincat_get_split_frequency;
+	ret->set_duplex = yaesu_bincat_set_duplex;
+	ret->get_duplex = yaesu_bincat_get_duplex;
 	ret->set_mode = yaesu_bincat_set_mode;
 	ret->get_mode = yaesu_bincat_get_mode;
 	ret->set_ptt = yaesu_bincat_set_ptt;
@@ -122,6 +124,9 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 		ft736r_close(ybc);
 		return NULL;
 	}
+	// Force split/duplex off
+	ybc->split_offset = 1;
+	ybc->duplex_rx = 1;
 	if (yaesu_bincat_set_frequency(ybc, 144000000) != 0) {
 		ft736r_close(ybc);
 		return NULL;

@@ -64,6 +64,18 @@ struct connection {
 	size_t				tx_buf_terminator;
 	struct connection	*next_connection;
 	struct connection	*prev_connection;
+	enum vfos			current_vfo;
+	uint64_t			vfoa_freq;
+	uint64_t			vfob_freq;
+	uint64_t			vfom_freq;
+	uint64_t			vfos_freq;
+	bool				split;
+	enum vfos			split_rx_vfo;
+	enum vfos			split_tx_vfo;
+	enum rig_modes		vfoa_mode;
+	enum rig_modes		vfob_mode;
+	enum rig_modes		vfom_mode;
+	enum rig_modes		vfos_mode;
 };
 struct connection	*connections = NULL;
 
@@ -140,6 +152,108 @@ struct long_cmd long_cmds[] = {
 	{"\\halt", '\xf1', 5},
 	{NULL, 0}
 };
+
+void save_freq(struct connection *c, uint64_t freq, enum vfos vfo)
+{
+	switch(vfo) {
+		case VFO_A:
+			c->vfoa_freq = freq;
+			break;
+		case VFO_B:
+			c->vfob_freq = freq;
+			break;
+		case VFO_MAIN:
+			c->vfom_freq = freq;
+			break;
+		case VFO_SUB:
+			c->vfos_freq = freq;
+			break;
+		default:
+			break;
+	}
+}
+
+void save_mode(struct connection *c, enum rig_modes mode, enum vfos vfo)
+{
+	switch(vfo) {
+		case VFO_A:
+			c->vfoa_mode = mode;
+			break;
+		case VFO_B:
+			c->vfob_mode = mode;
+			break;
+		case VFO_MAIN:
+			c->vfom_mode = mode;
+			break;
+		case VFO_SUB:
+			c->vfos_mode = mode;
+			break;
+		default:
+			break;
+	}
+}
+
+uint64_t current_freq(struct connection *c, enum vfos vfo)
+{
+	uint64_t	freq = 0;
+
+	switch(vfo) {
+		case VFO_A:
+			freq = c->vfoa_freq;
+			break;
+		case VFO_B:
+			freq = c->vfob_freq;
+			break;
+		case VFO_MAIN:
+			freq = c->vfom_freq;
+			break;
+		case VFO_SUB:
+			freq = c->vfos_freq;
+			break;
+		default:
+			break;
+	}
+	return freq;
+}
+
+enum vfos paired_vfo(enum vfos vfo)
+{
+	switch(vfo) {
+		case VFO_A:
+			return VFO_B;
+		case VFO_B:
+			return VFO_A;
+		case VFO_MAIN:
+			return VFO_SUB;
+		case VFO_SUB:
+			return VFO_MAIN;
+		default:
+			return vfo;
+	}
+}
+
+enum rig_modes current_mode(struct connection *c, enum vfos vfo)
+{
+	enum rig_modes	mode = MODE_UNKNOWN;
+
+	switch(vfo) {
+		case VFO_A:
+			mode = c->vfoa_mode;
+			break;
+		case VFO_B:
+			mode = c->vfob_mode;
+			break;
+		case VFO_MAIN:
+			mode = c->vfom_mode;
+			break;
+		case VFO_SUB:
+			mode = c->vfos_mode;
+			break;
+		default:
+			break;
+	}
+	return mode;
+}
 
 void replace_cmd(char *str)
 {
@@ -261,7 +375,7 @@ void tx_append(struct connection *c, const char *str)
 	c->tx_buf_terminator += len;
 }
 
-void tx_printf(struct connection *c, const char *format, ...)
+int tx_printf(struct connection *c, const char *format, ...)
 {
 	va_list	args;
 	char	buf[128];
@@ -269,13 +383,15 @@ void tx_printf(struct connection *c, const char *format, ...)
 
 	va_start(args, format);
 	ret = vsnprintf(buf, sizeof(buf), format, args);
-	if (ret < 0 || ret >= sizeof(buf))
+	if (ret < 0 || ret >= sizeof(buf)) {
 		tx_append(c, "RPRT -1\n");
-	else
-		tx_append(c, buf);
+		return -1;
+	}
+	tx_append(c, buf);
+	return 0;
 }
 
-void tx_rprt(struct connection *c, int ret)
+int tx_rprt(struct connection *c, int ret)
 {
 	char	buf[64];
 	int		sret;
@@ -283,17 +399,147 @@ void tx_rprt(struct connection *c, int ret)
 	if (ret > 0)
 		ret = 0-ret;
 	sret = snprintf(buf, sizeof(buf), "RPRT %d\n", ret);
-	if (sret > 0 && sret < sizeof(buf))
+	if (sret > 0 && sret < sizeof(buf)) {
 		tx_append(c, buf);
+		return 0;
+	}
+	tx_append(c, "RPRT -1\n");
+	return -1;
+}
+
+static int send_vfo(struct connection *c, enum vfos vfo)
+{
+	char	*buf = "VFOA\n";
+	
+	switch(vfo) {
+		case VFO_B:
+			buf = "VFOB\n";
+			break;
+		case VFO_MEMORY:
+			buf = "MEM\n";
+			break;
+		case VFO_A:
+			buf = "VFOA\n";
+			break;
+		case VFO_MAIN:
+			buf = "Main\n";
+			break;
+		case VFO_SUB:
+			buf = "Sub\n";
+			break;
+		default:
+			return -1;
+	}
+	tx_append(c, buf);
+	return 0;
+}
+
+enum vfos current_vfo(struct connection *c)
+{
+	if (c->rig->get_vfo)
+		return get_vfo(c->rig);
 	else
-		tx_append(c, "RPRT -1\n");
+		return c->current_vfo;
+}
+
+static int send_mode(struct connection *c, enum rig_modes mode)
+{
+	char	*buf;
+
+	switch (mode) {
+		case MODE_USB:
+			buf="USB";
+			break;
+		case MODE_LSB:
+			buf="LSB";
+			break;
+		case MODE_CW:
+			buf="CW";
+			break;
+		case MODE_CWR:
+			buf="CWR";
+			break;
+		case MODE_FSK:
+			buf="RTTY";
+			break;
+		case MODE_AM:
+			buf="AM";
+			break;
+		case MODE_FM:
+			buf="FM";
+			break;
+		default:
+			buf=NULL;
+			break;
+	}
+	if (buf == NULL)
+		return -1;
+	return tx_printf(c, "%s\n0\n", buf);
+}
+
+static int do_frequency_set(struct connection *c, enum vfos vfo, uint64_t freq, bool tx)
+{
+	uint64_t		tx_freq;
+	uint64_t		rx_freq;
+	enum rig_modes	tx_mode;
+	enum rig_modes	rx_mode;
+	
+	if (tx) {
+		tx_mode = current_mode(c, vfo);
+		if (tx_mode == MODE_UNKNOWN)
+			tx_mode = get_mode(c->rig);
+		rx_mode = current_mode(c, paired_vfo(vfo));
+		if (rx_mode == MODE_UNKNOWN)
+			rx_mode = tx_mode;
+		rx_freq = current_freq(c, paired_vfo(vfo));
+		tx_freq = freq;
+		if (tx_freq == 0)
+			tx_freq = get_frequency(c->rig);
+		if (rx_freq == 0)
+			rx_freq = tx_freq;
+	}
+	else {
+		rx_mode = current_mode(c, vfo);
+		if (rx_mode == MODE_UNKNOWN)
+			rx_mode = get_mode(c->rig);
+		tx_mode = current_mode(c, paired_vfo(vfo));
+		if (tx_mode == MODE_UNKNOWN)
+			tx_mode = rx_mode;
+		tx_freq = current_freq(c, paired_vfo(vfo));
+		rx_freq = freq;
+		if (rx_freq == 0)
+			rx_freq = get_frequency(c->rig);
+		if (tx_freq == 0)
+			tx_freq = rx_freq;
+	}
+
+	if (vfo == VFO_MAIN || vfo == VFO_SUB) {
+		if (set_duplex(c->rig, rx_freq, rx_mode, tx_freq, tx_mode) == 0) {
+			save_freq(c, freq, vfo);
+			return 0;
+		}
+	}
+	else if (c->split) {
+		if (set_split_frequency(c->rig, rx_freq, tx_freq) == 0) {
+			save_freq(c, freq, vfo);
+			return 0;
+		}
+	}
+	else {
+		if (set_frequency(c->rig, freq) == 0) {
+			save_freq(c, freq, vfo);
+			return 0;
+		}
+	}
+	return -1;
 }
 
 #define GET_ARG(c) { \
 	char *new_arg = strchr(c, ' '); \
 	if (new_arg == NULL) \
 		goto fail; \
-	new_arg++; \
+	while (*new_arg == ' ') \
+		new_arg++; \
 	c = strchr(new_arg, ' '); \
 	if (c == NULL) \
 		c = strchr(new_arg, 0); \
@@ -330,24 +576,28 @@ void handle_command(struct connection *c, size_t len)
 		c->rx_buf_size = 0;
 		c->rx_buf = NULL;
 	}
+	buf = strchr(cmdline, '\r');
+	if (buf)
+		*buf = 0;
 	shorten_cmds(cmdline);
 	// Now handle the commands...
 	for (cmd = cmdline; *cmd; cmd++) {
 		switch(*cmd) {
 			case 'F':
+				vfo = current_vfo(c);
 				GET_ARG(cmd);
 				if (sscanf(arg, "%"SCNu64, &u64) != 1)
 					goto fail;
-				tx_rprt(c, set_frequency(c->rig, u64));
+				if (tx_rprt(c, do_frequency_set(c, vfo, u64, false)) != 0)
+					goto abort;
 				break;
 			case 'I':
+				vfo = current_vfo(c);
 				GET_ARG(cmd);
 				if (sscanf(arg, "%"SCNu64, &u64) != 1)
 					goto fail;
-				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
-				if (ret != 0)
-					goto fail;
-				tx_rprt(c, set_split_frequency(c->rig, rx_freq, u64));
+				if (tx_rprt(c, do_frequency_set(c, paired_vfo(vfo), u64, false)) != 0)
+					goto abort;
 				break;
 			case 'f':
 				u64 = get_frequency(c->rig);
@@ -356,15 +606,17 @@ void handle_command(struct connection *c, size_t len)
 				tx_printf(c, "%"PRIu64"\n", u64);
 				break;
 			case 'i':
+				vfo = current_vfo(c);
 				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
 				if (ret != 0) {
-					tx_freq = get_frequency(c->rig);
+					tx_freq = current_freq(c, paired_vfo(vfo));
 					if (tx_freq == 0)
 						goto fail;
 				}
 				tx_printf(c, "%"PRIu64"\n", tx_freq);
 				break;
 			case 'M':
+				vfo = current_vfo(c);
 				GET_ARG(cmd);
 				mode = MODE_UNKNOWN;
 				if (strcmp(arg, "USB")==0)
@@ -384,40 +636,18 @@ void handle_command(struct connection *c, size_t len)
 				if (mode == MODE_UNKNOWN)
 					goto fail;
 				GET_ARG(cmd);
-				tx_rprt(c, set_mode(c->rig, mode));
+				if (tx_rprt(c, set_mode(c->rig, mode)) == 0)
+					save_mode(c, mode, vfo);
+				else
+					goto abort;
 				break;
 			case 'm':
-			case 'x':
 				mode = get_mode(c->rig);
-				switch (mode) {
-					case MODE_USB:
-						buf="USB";
-						break;
-					case MODE_LSB:
-						buf="LSB";
-						break;
-					case MODE_CW:
-						buf="CW";
-						break;
-					case MODE_CWR:
-						buf="CWR";
-						break;
-					case MODE_FSK:
-						buf="RTTY";
-						break;
-					case MODE_AM:
-						buf="AM";
-						break;
-					case MODE_FM:
-						buf="FM";
-						break;
-					default:
-						buf=NULL;
-						break;
-				}
-				if (buf == NULL)
-					goto fail;
-				tx_printf(c, "%s\n0\n", buf);
+				send_mode(c, mode);
+				break;
+			case 'x':
+				mode = current_mode(c, paired_vfo(current_vfo(c)));
+				send_mode(c, mode);
 				break;
 			case 'V':
 				GET_ARG(cmd);
@@ -428,9 +658,29 @@ void handle_command(struct connection *c, size_t len)
 					vfo = VFO_B;
 				else if (strcmp(arg, "MEM")==0)
 					vfo = VFO_MEMORY;
+				else if (strcmp(arg, "Main")==0)
+					vfo = VFO_MAIN;
+				else if (strcmp(arg, "Sub")==0)
+					vfo = VFO_SUB;
 				if (vfo == VFO_UNKNOWN)
 					goto fail;
-				tx_rprt(c, set_vfo(c->rig, vfo));
+				if (c->rig->set_vfo) {
+					if (tx_rprt(c, set_vfo(c->rig, vfo)) == 0)
+						c->current_vfo = vfo;
+					else
+						goto abort;
+				}
+				else {
+					// Fake a VFO...
+					if (do_frequency_set(c, vfo, current_freq(c, vfo), false) != 0)
+						goto fail;
+					if (current_mode(c, vfo) == MODE_UNKNOWN)
+						save_mode(c, get_mode(c->rig), vfo);
+					if (set_mode(c->rig, current_mode(c, vfo)) != 0)
+						goto fail;
+					c->current_vfo = vfo;
+					tx_append(c, "RPRT 0\n");
+				}
 				break;
 			case 'S':
 				GET_ARG(cmd);
@@ -440,75 +690,54 @@ void handle_command(struct connection *c, size_t len)
 					u64 = get_frequency(c->rig);
 					if (u64 == 0)
 						tx_append(c, "RPRT -1\n");
-					else
-						tx_rprt(c, set_frequency(c->rig, u64));
+					else {
+						if (tx_rprt(c, set_frequency(c->rig, u64)) != 0)
+							goto abort;
+						c->split = false;
+					}
 				}
 				else {
 					// "Enable split"
 					// First, switch to the "other" VFO to get the frequency
-					vfo = get_vfo(c->rig);
+					vfo = current_vfo(c);
 					rx_freq = get_frequency(c->rig);
 					if (rx_freq == 0)
 						goto fail;
-					switch (vfo) {
-						case VFO_A:
-							if (set_vfo(c->rig, VFO_B) != 0)
-								goto fail;
-							break;
-						case VFO_B:
-							if (set_vfo(c->rig, VFO_A) != 0)
-								goto fail;
-							break;
-						default:
-							break;
+					if (c->rig->set_vfo) {
+						if (set_vfo(c->rig, paired_vfo(vfo)) != 0)
+							goto fail;
+						tx_freq = get_frequency(c->rig);
+						if (tx_freq == 0)
+							goto fail;
+						// Now switch back
+						if (set_vfo(c->rig, vfo) != 0)
+							goto fail;
 					}
-					tx_freq = get_frequency(c->rig);
-					if (tx_freq == 0)
-						goto fail;
-					// Now switch back
-					if (set_vfo(c->rig, vfo) != 0)
-						goto fail;
+					else {
+						tx_freq = current_freq(c, paired_vfo(vfo));
+					}
 					// And finally, set the split.
-					tx_rprt(c, set_split_frequency(c->rig, rx_freq, tx_freq));
+					c->split = true;
+					if (tx_rprt(c, do_frequency_set(c, paired_vfo(vfo), tx_freq, true)) != 0) {
+						c->split = false;
+						goto abort;
+					}
 				}
 				GET_ARG(cmd);
 				break;
 			case 'v':
-				vfo = get_vfo(c->rig);
-				switch(vfo) {
-					case VFO_B:
-						buf = "VFOB";
-						break;
-					case VFO_MEMORY:
-						buf = "MEM";
-						break;
-					case VFO_A:
-					default:
-						buf = "VFOA";
-						break;
-				}
-				if (buf == NULL)
+				vfo = current_vfo(c);
+				if (send_vfo(c, vfo) != 0)
 					goto fail;
-				tx_printf(c, "%s\n", buf);
 				break;
 			case 's':
 				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
-				vfo = get_vfo(c->rig);
-				switch(vfo) {
-					case VFO_B:
-						buf = ret==0?"VFOA":"VFOB";
-						break;
-					case VFO_MEMORY:
-						buf = "MEM";
-						break;
-					case VFO_A:
-					default:
-						buf = ret==0?"VFOB":"VFOA";
-						break;
-				}
-				if (buf == NULL)
+				vfo = current_vfo(c);
+				if (vfo == VFO_UNKNOWN)
 					goto fail;
-				tx_printf(c, "%d\n%s\n", ret==0?1:0, buf);
+				tx_append(c, ret==0?"1\n":"0\n");
+				if (send_vfo(c, paired_vfo(vfo)) != 0)
+					goto fail;
 				break;
 			case 'T':
 				GET_ARG(cmd);
@@ -551,6 +780,8 @@ void handle_command(struct connection *c, size_t len)
 						goto fail;
 					tx_printf(c, "%d\n", i-49);
 				}
+				else
+					goto fail;
 				break;
 			case '\x8f':
 				// Output copied from the dummy driver...
@@ -558,13 +789,16 @@ void handle_command(struct connection *c, size_t len)
 				tx_append(c, "2\n");			// Rig model (dummy)
 				tx_append(c, "2\n");			// ITU region (!)
 					// RX info: lowest/highest freq, modes available, low power, high power, VFOs, antennas
+				i = 0x10000003;	// VFO_MEM, VFO_A, VFO_B
+				if (c->rig->set_duplex)
+					i |= 0xc000000;
 				for (limit = c->rig->rx_limits; limit; limit = limit->next)
-					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff -1 -1 0x10000003 0x01\n", limit->low, limit->high);
+					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff -1 -1 0x%x 0x01\n", limit->low, limit->high, i);
 					// Terminated with all zeros
 				tx_append(c, "0 0 0 0 0 0 0\n");
 					// TX info (as above)
 				for (limit = c->rig->tx_limits; limit; limit = limit->next)
-					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff 0 100 0x10000003 0x01\n", limit->low, limit->high);
+					tx_printf(c, "%"PRIu64" %"PRIu64" 0x1ff 0 100 0x%x 0x01\n", limit->low, limit->high, i);
 				tx_append(c, "0 0 0 0 0 0 0\n");
 					// Tuning steps available, modes, steps
 				tx_append(c, "0 0\n");
@@ -599,6 +833,7 @@ void handle_command(struct connection *c, size_t len)
 
 fail:
 	tx_append(c, "RPRT -1\n");
+abort:
 	free(cmdline);
 }
 

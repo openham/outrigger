@@ -75,6 +75,10 @@ struct yaesu_bincat {
 	bool				hands_on;
 
 	uint64_t			freq;
+	uint64_t			duplex_rx;
+	uint64_t			duplex_tx;
+	uint64_t			duplex_rx_mode;
+	uint64_t			duplex_tx_mode;
 	unsigned			mode;
 	unsigned			split_offset;
 	bool				ptt;
@@ -93,8 +97,10 @@ struct yaesu_bincat *yaesu_bincat_new(struct _dictionary_ *d, const char *sectio
 
 int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq);
 int yaesu_bincat_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx);
+int yaesu_bincat_set_duplex(void *cbdata, uint64_t freq_rx, enum rig_modes mode_rx, uint64_t freq_tx, enum rig_modes mode_tx);
 uint64_t yaesu_bincat_get_frequency(void *cbdata);
 int yaesu_bincat_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq);
+int yaesu_bincat_get_duplex(void *cbdata, uint64_t *rx_freq, enum rig_modes *rx_mode, uint64_t *tx_freq, enum rig_modes *tx_mode);
 int yaesu_bincat_set_mode(void *ybc, enum rig_modes mode);
 enum rig_modes yaesu_bincat_get_mode(void *ybc);
 int yaesu_bincat_set_ptt(void *cbdata, bool tx);

@@ -56,7 +56,8 @@ enum ybc_mode {
 	YBC_MODE_CW,
 	YBC_MODE_FM = 8,
 	YBC_MODE_CWN = 0x82,
-	YBC_MODE_FMN = 0x88
+	YBC_MODE_FMN = 0x88,
+	YBC_MODE_UNKNOWN
 };
 
 enum ybc_params {
@@ -190,6 +191,13 @@ static size_t fill_bcd(char *buf, size_t nybbles, bool big, uint64_t val)
 		*b |= ch;
 	}
 	return nybbles / 2;
+}
+
+static uint64_t round_freq(uint64_t freq)
+{
+	freq += 5;
+	freq -= (freq % 10);
+	return freq;
 }
 
 struct io_response *yaesu_bincat_command(struct yaesu_bincat *ybc, bool set, enum yaesu_bincat_cmds cmd, ...)
@@ -343,16 +351,26 @@ int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq)
 {
 	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
 	struct io_response	*resp;
-	
+
+	freq = round_freq(freq);
+	if (ybc->duplex_rx || ybc->duplex_tx) {
+		resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_OFF);
+		if (resp == NULL)
+			return ENODEV;
+		ybc->duplex_rx = ybc->duplex_tx = 0;
+		free(resp);
+	}
+	if (ybc->split_offset) {
+		resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_SPLIT_OFF);
+		if (resp == NULL)
+			return ENODEV;
+		free(resp);
+	}
 	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FREQUENCY, freq/10);
 	if (resp == NULL)
 		return ENODEV;
 	free(resp);
-	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_SPLIT_OFF);
-	if (resp == NULL)
-		return ENODEV;
-	free(resp);
-	ybc->freq = freq - (freq%10);
+	ybc->freq = freq;
 	ybc->split_offset = 0;
 	return 0;
 }
@@ -362,6 +380,15 @@ int yaesu_bincat_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t fr
 	struct yaesu_bincat	*ybc = (struct yaesu_bincat *)cbdata;
 	struct io_response	*resp;
 
+	freq_rx = round_freq(freq_rx);
+	freq_tx = round_freq(freq_tx);
+	if (ybc->duplex_rx || ybc->duplex_tx) {
+		resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_OFF);
+		if (resp == NULL)
+			return ENODEV;
+		ybc->duplex_rx = ybc->duplex_tx = 0;
+		free(resp);
+	}
 	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FREQUENCY, freq_rx/10);
 	if (resp == NULL)
 		return ENODEV;
@@ -386,8 +413,93 @@ int yaesu_bincat_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t fr
 			return ENODEV;
 		free(resp);
 	}
-	ybc->freq = freq_rx - (freq_rx%10);
+	ybc->freq = freq_rx;
 	ybc->split_offset = freq_rx - freq_tx;
+	return 0;
+}
+
+static enum ybc_mode get_yaesu_bincat_mode(enum rig_modes mode)
+{
+	switch(mode) {
+		case MODE_CW:
+			return YBC_MODE_CW;
+		case MODE_CWN:
+			return YBC_MODE_CWN;
+		case MODE_FM:
+			return YBC_MODE_FM;
+		case MODE_FMN:
+			return YBC_MODE_FMN;
+		case MODE_LSB:
+			return YBC_MODE_LSB;
+		case MODE_USB:
+			return YBC_MODE_USB;
+		default:
+			return YBC_MODE_UNKNOWN;
+	}
+}
+
+static enum rig_modes yaesu_bincat_mode_get_rig_mode(enum ybc_mode mode)
+{
+	switch(mode) {
+		case YBC_MODE_CW:
+			return MODE_CW;
+		case YBC_MODE_CWN:
+			return MODE_CWN;
+		case YBC_MODE_FM:
+			return MODE_FM;
+		case YBC_MODE_FMN:
+			return MODE_FMN;
+		case YBC_MODE_LSB:
+			return MODE_LSB;
+		case YBC_MODE_USB:
+			return MODE_USB;
+		default:
+			return MODE_UNKNOWN;
+	}
+}
+
+int yaesu_bincat_set_duplex(void *cbdata, uint64_t freq_rx, enum rig_modes mode_rx, uint64_t freq_tx, enum rig_modes mode_tx)
+{
+	struct yaesu_bincat	*ybc = (struct yaesu_bincat *)cbdata;
+	struct io_response	*resp;
+	enum ybc_mode		tx_mode = get_yaesu_bincat_mode(mode_tx);
+	enum ybc_mode		rx_mode = get_yaesu_bincat_mode(mode_rx);
+
+	freq_rx = round_freq(freq_rx);
+	freq_tx = round_freq(freq_tx);
+
+	if (ybc->split_offset) {
+		resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_SPLIT_OFF);
+		if (resp == NULL)
+			return ENODEV;
+		free(resp);
+	}
+	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_RX_MODE, rx_mode);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_TX_MODE, tx_mode);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_RX_FREQ, freq_rx);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_TX_FREQ, freq_tx);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FULL_DUPLEX_ON);
+	if (resp == NULL)
+		return ENODEV;
+	free(resp);
+	ybc->freq = freq_rx;
+	ybc->split_offset = 0;
+	ybc->duplex_tx = freq_tx;
+	ybc->duplex_rx = freq_rx;
+	ybc->duplex_tx_mode = tx_mode;
+	ybc->duplex_rx_mode = rx_mode;
 	return 0;
 }
 
@@ -460,6 +572,19 @@ int yaesu_bincat_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *
 		return EACCES;
 	*rx_freq = ybc->freq;
 	*tx_freq = ybc->freq + ybc->split_offset;
+	return 0;
+}
+
+int yaesu_bincat_get_duplex(void *cbdata, uint64_t *rx_freq, enum rig_modes *rx_mode, uint64_t *tx_freq, enum rig_modes *tx_mode)
+{
+	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
+
+	if (ybc->duplex_rx == 0 || ybc->duplex_tx == 0)
+		return EACCES;
+	*rx_freq = ybc->duplex_rx;
+	*tx_freq = ybc->duplex_tx;
+	*rx_mode = yaesu_bincat_mode_get_rig_mode(ybc->duplex_rx_mode);
+	*tx_mode = yaesu_bincat_mode_get_rig_mode(ybc->duplex_tx_mode);
 	return 0;
 }
 

@@ -50,7 +50,9 @@ enum vfos {
 	VFO_A			= 0x01,
 	VFO_B			= 0x02,
 	VFO_MEMORY		= 0x04,
-	VFO_COM			= 0x08	// TODO: This is TS-711/TS-811 specific... I don't know what this does!
+	VFO_COM			= 0x08,	// TODO: This is TS-711/TS-811 specific... I don't know what this does!
+	VFO_MAIN		= 0x10, // For duplex mode only.
+	VFO_SUB			= 0x20, // For duplex mode only.
 };
 
 struct bandlimit {
@@ -70,8 +72,10 @@ struct rig {
 	int (*close)(void *cbdata);
 	int (*set_frequency)(void *cbdata, uint64_t);
 	int (*set_split_frequency)(void *cbdata, uint64_t, uint64_t);
+	int (*set_duplex)(void *cbdata, uint64_t, enum rig_modes, uint64_t, enum rig_modes);
 	uint64_t (*get_frequency)(void *cbdata);
 	int (*get_split_frequency)(void *cbdata, uint64_t*, uint64_t *);
+	int (*get_duplex)(void *cbdata, uint64_t*, enum rig_modes *, uint64_t *, enum rig_modes *);
 	int (*set_mode)(void *cbdata, enum rig_modes);
 	enum rig_modes (*get_mode)(void *cbdata);
 	int (*set_vfo)(void *cbdata, enum vfos);
@@ -124,6 +128,14 @@ int set_frequency(struct rig *rig, uint64_t freq);
 int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx);
 
 /*
+ * Sets the frequency of the currently selected VFO to freq_tx,
+ * some unspecified "other" VFO to freq_rx, and enables duplex mode
+ * 
+ * return 0 on success or an errno value on failure
+ */
+int set_duplex(struct rig *rig, uint64_t freq_rx, enum rig_modes mode_rx, uint64_t freq_tx, enum rig_modes mode_tx);
+
+/*
  * Reads the currently displayed frequency of the currently selected VFO
  * 
  * Returns 0 on failure
@@ -138,6 +150,15 @@ uint64_t get_frequency(struct rig *rig);
  * This function will fail if the rig is not operating split.
  */
 int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx);
+
+/*
+ * Reads the current RX frequency into freq_rx, the current TX frequency
+ * into freq_tx, and returns 0.
+ * 
+ * Returns a non-zero errno on failure.
+ * This function will fail if the rig is not operating duplex.
+ */
+int get_duplex(struct rig *rig, uint64_t *freq_rx, enum rig_modes *mode_rx, uint64_t *freq_tx, enum rig_modes *mode_tx);
 
 /*
  * Sets the current mode.
