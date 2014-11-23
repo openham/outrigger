@@ -1083,13 +1083,13 @@ usage:
 #ifdef WITH_FORK
 		"If -f is passed, remains in the forground and doesn't fork\n\n"
 #endif
-		"Where <config> is the path to the ini file\n\n",
+		"Where <config> is the path to the ini file\n\n", argv[0],
 #ifdef WITH_FORK
-		"-f ",
+		"[-f] "
 #else
-		"",
+		""
 #endif
-		argv[0]);
+		);
 	if (d)
 		iniparser_freedict(d);
 	return 1;
