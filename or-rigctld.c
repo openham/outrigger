@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
+#include <netinet/tcp.h>
 #ifdef WITH_SIGNAL
 #include <signal.h>
 #endif
@@ -844,6 +845,7 @@ void main_loop(void) {
 	int					max_sock;
 	int					ret;
 	int					avail;
+	int					sockopt;
 	struct listener		*l;
 	struct connection	*c;
 	char				*buf;
@@ -935,6 +937,8 @@ void main_loop(void) {
 					free(c);
 					continue;
 				}
+				sockopt = 1;
+				setsockopt(c->socket, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
 				c->rig = l->rig;
 				c->next_connection = connections;
 				connections = c;
