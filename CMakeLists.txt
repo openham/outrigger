@@ -20,6 +20,7 @@ set(SOURCES
 	io/io.c
 	io/serial/serial.c
 	rigs/kenwood_hf/kenwood_hf.c
+	rigs/kenwood_hf/ts-440s.c
 	rigs/kenwood_hf/ts-940s.c
 	rigs/yaesu_cat/yaesu_bincat.c
 	rigs/yaesu_cat/ft-736r.c
@@ -88,8 +89,8 @@ endif()
 
 add_library(outrigger ${SOURCES})
 
-add_executable(test test.c)
-target_link_libraries(test outrigger)
+add_executable(testcmds test.c)
+target_link_libraries(testcmds outrigger)
 
 add_executable(or-rigctld or-rigctld.c)
 target_link_libraries(or-rigctld outrigger)

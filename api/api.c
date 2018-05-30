@@ -32,12 +32,14 @@
 
 #include "api.h"
 
-#include <ts-940s.h>
 #include <ft-736r.h>
+#include <ts-440s.h>
+#include <ts-940s.h>
 
 struct supported_rig supported_rigs[] = {
-	{ "TS-940S", ts940s_init },
 	{ "FT-736R", ft736r_init },
+	{ "TS-440S", ts440s_init },
+	{ "TS-940S", ts940s_init },
 	{ "", NULL }
 };
 
