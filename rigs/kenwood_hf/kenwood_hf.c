@@ -1176,3 +1176,30 @@ int kenwood_hf_get_ptt(void *cbdata)
 	}
 }
 
+int kenwood_hf_close(void *cbdata)
+{
+	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
+	struct io_response	*resp;
+	int					ret;
+
+	if (khf==NULL)
+		return EINVAL;
+	/*
+	 * Most rigs don't support this, so it will fail.
+	 * That's OK though.
+	 */
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LO);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
+	if (resp)
+		free(resp);
+	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 0);
+	if (resp)
+		free(resp);
+
+	ret = io_end(khf->handle);
+	kenwood_hf_free(khf);
+	return ret;
+}
+

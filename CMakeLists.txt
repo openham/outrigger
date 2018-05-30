@@ -20,7 +20,9 @@ set(SOURCES
 	io/io.c
 	io/serial/serial.c
 	rigs/kenwood_hf/kenwood_hf.c
+	rigs/kenwood_hf/ts-140s.c
 	rigs/kenwood_hf/ts-440s.c
+	rigs/kenwood_hf/ts-711a.c
 	rigs/kenwood_hf/ts-940s.c
 	rigs/yaesu_cat/yaesu_bincat.c
 	rigs/yaesu_cat/ft-736r.c

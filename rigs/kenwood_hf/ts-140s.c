@@ -33,12 +33,17 @@
 
 #include "kenwood_hf.h"
 
-struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
+struct rig	*ts140s_init(struct _dictionary_ *d, const char *section)
 {
 	struct rig				*ret = (struct rig *)calloc(1, sizeof(struct rig));
 	struct kenwood_hf		*khf;
+	char					*rig_name;
 
 	if (ret == NULL)
+		return NULL;
+
+	rig_name = getstring(d, section, "rig", NULL);
+	if (rig_name == NULL)
 		return NULL;
 
 	// Fill in serial port defaults
@@ -48,7 +53,7 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	set_default(d, section, "stopbits", "2");
 	set_default(d, section, "parity", "None");
 	set_default(d, section, "flow", "CTSRTS");
-	set_default(d, section, "rx_bandlimit_low_hf", "30000");
+	set_default(d, section, "rx_bandlimit_low_hf", "500000");
 	set_default(d, section, "rx_bandlimit_high_hf", "30000000");
 	set_default(d, section, "tx_bandlimit_low_160m", "1800000");
 	set_default(d, section, "tx_bandlimit_high_160m", "2000000");
@@ -61,13 +66,19 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	set_default(d, section, "tx_bandlimit_low_20m", "14000000");
 	set_default(d, section, "tx_bandlimit_high_20m", "14350000");
 	set_default(d, section, "tx_bandlimit_low_17m", "18068000");
-	set_default(d, section, "tx_bandlimit_high_17m", "18180000");
+	set_default(d, section, "tx_bandlimit_high_17m", "18168000");
 	set_default(d, section, "tx_bandlimit_low_15m", "21000000");
 	set_default(d, section, "tx_bandlimit_high_15m", "21450000");
 	set_default(d, section, "tx_bandlimit_low_12m", "24890000");
 	set_default(d, section, "tx_bandlimit_high_12m", "24990000");
 	set_default(d, section, "tx_bandlimit_low_10m", "28000000");
 	set_default(d, section, "tx_bandlimit_high_10m", "29700000");
+	if (strcmp(rig_name, "TS-680S") == 0) {
+		set_default(d, section, "rx_bandlimit_low_6m", "50000000");
+		set_default(d, section, "rx_bandlimit_high_6m", "54000000");
+		set_default(d, section, "tx_bandlimit_low_6m", "50000000");
+		set_default(d, section, "tx_bandlimit_high_6m", "54000000");
+	}
 
 	khf = kenwood_hf_new(d, section);
 	if (khf == NULL) {
@@ -89,18 +100,16 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 	ret->set_ptt = kenwood_hf_set_ptt;
 	ret->get_ptt = kenwood_hf_get_ptt;
 	ret->cbdata = khf;
-	kenwood_hf_setbits(khf->set_cmds, KW_HF_CMD_AI, KW_HF_CMD_AT1,
-			KW_HF_CMD_DN, KW_HF_CMD_UP, KW_HF_CMD_DS, KW_HF_CMD_FA,
-			KW_HF_CMD_FB, KW_HF_CMD_FN, KW_HF_CMD_HD, KW_HF_CMD_LK,
-			KW_HF_CMD_LO, KW_HF_CMD_MC, KW_HF_CMD_MD, KW_HF_CMD_MS,
+	kenwood_hf_setbits(khf->set_cmds, KW_HF_CMD_AI,
+			KW_HF_CMD_DN, KW_HF_CMD_UP, KW_HF_CMD_FA,
+			KW_HF_CMD_FB, KW_HF_CMD_FN, KW_HF_CMD_LK,
+			KW_HF_CMD_MC, KW_HF_CMD_MD,
 			KW_HF_CMD_MW, KW_HF_CMD_RC, KW_HF_CMD_RD, KW_HF_CMD_RU,
 			KW_HF_CMD_RT, KW_HF_CMD_RX, KW_HF_CMD_TX, KW_HF_CMD_SC,
-			KW_HF_CMD_SH, KW_HF_CMD_SL, KW_HF_CMD_SP, KW_HF_CMD_VB,
-			KW_HF_CMD_VR, KW_HF_CMD_XT, KW_HF_TERMINATOR);
-	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_AI, KW_HF_CMD_DS, KW_HF_CMD_FA, 
-			KW_HF_CMD_FB, KW_HF_CMD_HD, KW_HF_CMD_ID, KW_HF_CMD_IF,
-			KW_HF_CMD_LK, KW_HF_CMD_MR, KW_HF_CMD_MS, KW_HF_CMD_SH,
-			KW_HF_CMD_SL, KW_HF_CMD_VB, KW_HF_TERMINATOR);
+			KW_HF_CMD_SP, KW_HF_TERMINATOR);
+	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_FA, 
+			KW_HF_CMD_FB, KW_HF_CMD_ID, KW_HF_CMD_IF,
+			KW_HF_CMD_LK, KW_HF_CMD_MR, KW_HF_TERMINATOR);
 
 	khf->handle=io_start_from_dictionary(d, section, IO_H_SERIAL, kenwood_hf_read_response, kenwood_hf_handle_extra, khf);
 	if (khf->handle == NULL) {
@@ -108,6 +117,7 @@ struct rig	*ts940s_init(struct _dictionary_ *d, const char *section)
 		free(ret);
 		return NULL;
 	}
+	/* TODO: Taken from TS-940S... should be verified. */
 	kenwood_hf_set_cmd_delays(khf, 
 			KW_HF_CMD_FA, 200,
 			KW_HF_CMD_FB, 200,

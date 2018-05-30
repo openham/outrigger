@@ -137,5 +137,6 @@ int kenwood_hf_set_vfo(void *cbdata, enum vfos vfo);
 enum vfos kenwood_hf_get_vfo(void *cbdata);
 int kenwood_hf_set_ptt(void *cbdata, bool tx);
 int kenwood_hf_get_ptt(void *cbdata);
+int kenwood_hf_close(void *cbdata);
 
 #endif

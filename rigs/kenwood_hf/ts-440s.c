@@ -33,29 +33,6 @@
 
 #include "kenwood_hf.h"
 
-static int ts440s_close(void *cbdata)
-{
-	struct kenwood_hf	*khf = (struct kenwood_hf *)cbdata;
-	struct io_response	*resp;
-	int					ret;
-
-	if (khf==NULL)
-		return EINVAL;
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LO);
-	if (resp)
-		free(resp);
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_LK, 0);
-	if (resp)
-		free(resp);
-	resp = kenwood_hf_command(khf, true, KW_HF_CMD_AI, 0);
-	if (resp)
-		free(resp);
-
-	ret = io_end(khf->handle);
-	kenwood_hf_free(khf);
-	return ret;
-}
-
 struct rig	*ts440s_init(struct _dictionary_ *d, const char *section)
 {
 	struct rig				*ret = (struct rig *)calloc(1, sizeof(struct rig));
@@ -100,7 +77,7 @@ struct rig	*ts440s_init(struct _dictionary_ *d, const char *section)
 	ret->supported_modes = MODE_CW | MODE_AM | 
 			MODE_LSB | MODE_USB | MODE_FM | MODE_FSK;
 	ret->supported_vfos = VFO_A | VFO_B | VFO_MEMORY;
-	ret->close = ts440s_close;
+	ret->close = kenwood_hf_close;
 	ret->set_frequency = kenwood_hf_set_frequency;
 	ret->get_frequency = kenwood_hf_get_frequency;
 	ret->set_split_frequency = kenwood_hf_set_split_frequency;
@@ -139,7 +116,7 @@ struct rig	*ts440s_init(struct _dictionary_ *d, const char *section)
 			KW_HF_CMD_SP, 200,
 	KW_HF_TERMINATOR);
 	if (kenwood_hf_init(khf) != 0) {
-		ts440s_close(khf);
+		kenwood_hf_close(khf);
 		return NULL;
 	}
 	return ret;
