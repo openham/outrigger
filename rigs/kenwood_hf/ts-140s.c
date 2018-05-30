@@ -1,19 +1,19 @@
 /* Copyright (c) 2014 OpenHam
  * Developers:
  * Stephen Hurd (K6BSD/VE5BSD) <shurd@FreeBSD.org>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice, developer list, and this permission notice shall
  * be included in all copies or substantial portions of the Software. If you meet
  * us some day, and you think this stuff is worth it, you can buy us a beer in
  * return
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -85,8 +85,8 @@ struct rig	*ts140s_init(struct _dictionary_ *d, const char *section)
 		free(ret);
 		return NULL;
 	}
-	ret->supported_modes = MODE_CW | MODE_AM | 
-			MODE_LSB | MODE_USB | MODE_FM | MODE_FSK;
+	ret->supported_modes = MODE_CW | MODE_CWN | MODE_AM |
+			MODE_LSB | MODE_USB | MODE_FM;
 	ret->supported_vfos = VFO_A | VFO_B | VFO_MEMORY;
 	ret->close = kenwood_hf_close;
 	ret->set_frequency = kenwood_hf_set_frequency;
@@ -107,7 +107,7 @@ struct rig	*ts140s_init(struct _dictionary_ *d, const char *section)
 			KW_HF_CMD_MW, KW_HF_CMD_RC, KW_HF_CMD_RD, KW_HF_CMD_RU,
 			KW_HF_CMD_RT, KW_HF_CMD_RX, KW_HF_CMD_TX, KW_HF_CMD_SC,
 			KW_HF_CMD_SP, KW_HF_TERMINATOR);
-	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_FA, 
+	kenwood_hf_setbits(khf->read_cmds, KW_HF_CMD_FA,
 			KW_HF_CMD_FB, KW_HF_CMD_ID, KW_HF_CMD_IF,
 			KW_HF_CMD_LK, KW_HF_CMD_MR, KW_HF_TERMINATOR);
 
@@ -118,7 +118,7 @@ struct rig	*ts140s_init(struct _dictionary_ *d, const char *section)
 		return NULL;
 	}
 	/* TODO: Taken from TS-940S... should be verified. */
-	kenwood_hf_set_cmd_delays(khf, 
+	kenwood_hf_set_cmd_delays(khf,
 			KW_HF_CMD_FA, 200,
 			KW_HF_CMD_FB, 200,
 			KW_HF_CMD_SP, 200,

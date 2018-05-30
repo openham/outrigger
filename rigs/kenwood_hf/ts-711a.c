@@ -85,7 +85,7 @@ struct rig	*ts711a_init(struct _dictionary_ *d, const char *section)
 	}
 	ret->supported_modes = MODE_CW |
 			MODE_LSB | MODE_USB | MODE_FM;
-	ret->supported_vfos = VFO_A | VFO_B | VFO_MEMORY;
+	ret->supported_vfos = VFO_A | VFO_B | VFO_MEMORY | VFO_COM;
 	ret->close = kenwood_hf_close;
 	ret->set_frequency = kenwood_hf_set_frequency;
 	ret->get_frequency = kenwood_hf_get_frequency;
