@@ -127,9 +127,9 @@ struct io_response *kenwood_hf_command(struct kenwood_hf *khf, bool set, enum ke
 void kenwood_hf_free(struct kenwood_hf *khf);
 struct kenwood_hf *kenwood_hf_new(struct _dictionary_ *d, const char *section);
 
-int kenwood_hf_set_frequency(void *cbdata, uint64_t freq);
+int kenwood_hf_set_frequency(void *cbdata, enum vfos vfo, uint64_t freq);
 int kenwood_hf_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx);
-uint64_t kenwood_hf_get_frequency(void *cbdata);
+uint64_t kenwood_hf_get_frequency(void *cbdata, enum vfos vfo);
 int kenwood_hf_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq);
 int kenwood_hf_set_mode(void *khf, enum rig_modes mode);
 enum rig_modes kenwood_hf_get_mode(void *khf);

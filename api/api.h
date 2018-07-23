@@ -70,10 +70,10 @@ struct rig {
 
 	/* Callbacks */
 	int (*close)(void *cbdata);
-	int (*set_frequency)(void *cbdata, uint64_t);
+	int (*set_frequency)(void *cbdata, enum vfos, uint64_t);
 	int (*set_split_frequency)(void *cbdata, uint64_t, uint64_t);
 	int (*set_duplex)(void *cbdata, uint64_t, enum rig_modes, uint64_t, enum rig_modes);
-	uint64_t (*get_frequency)(void *cbdata);
+	uint64_t (*get_frequency)(void *cbdata, enum vfos vfo);
 	int (*get_split_frequency)(void *cbdata, uint64_t*, uint64_t *);
 	int (*get_duplex)(void *cbdata, uint64_t*, enum rig_modes *, uint64_t *, enum rig_modes *);
 	int (*set_mode)(void *cbdata, enum rig_modes);
@@ -111,12 +111,12 @@ struct rig *init_rig(struct _dictionary_ *d, char *section);
 int close_rig(struct rig *rig);
 
 /*
- * Sets the frequency of the currently selected VFO to freq.
+ * Sets the frequency of the currently selected VFO to freq if vfo == VFO_UNKNOWN
  * If split is enabled, disables it.
  * 
  * return 0 on success or an errno value on failure
  */
-int set_frequency(struct rig *rig, uint64_t freq);
+int set_frequency(struct rig *rig, enum vfos vfo, uint64_t freq);
 
 /*
  * Sets the frequency of the currently selected VFO to freq_tx,
@@ -140,7 +140,7 @@ int set_duplex(struct rig *rig, uint64_t freq_rx, enum rig_modes mode_rx, uint64
  * 
  * Returns 0 on failure
  */
-uint64_t get_frequency(struct rig *rig);
+uint64_t get_frequency(struct rig *rig, enum vfos vfo);
 
 /*
  * Reads the current RX frequency into freq_rx, the current TX frequency
@@ -148,6 +148,7 @@ uint64_t get_frequency(struct rig *rig);
  * 
  * Returns a non-zero errno on failure.
  * This function will fail if the rig is not operating split.
+ * freq_rx and freq_tx may be NULL to test if split is enabled.
  */
 int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx);
 

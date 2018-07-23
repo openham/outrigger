@@ -71,8 +71,6 @@ struct connection {
 	uint64_t			vfom_freq;
 	uint64_t			vfos_freq;
 	bool				split;
-	enum vfos			split_rx_vfo;
-	enum vfos			split_tx_vfo;
 	enum rig_modes		vfoa_mode;
 	enum rig_modes		vfob_mode;
 	enum rig_modes		vfom_mode;
@@ -153,6 +151,8 @@ struct long_cmd long_cmds[] = {
 	{"\\halt", '\xf1', 5},
 	{NULL, 0}
 };
+
+#define debug 1
 
 void save_freq(struct connection *c, uint64_t freq, enum vfos vfo)
 {
@@ -345,6 +345,8 @@ int add_rig(dictionary *d, char *section)
 
 void close_connection(struct connection *c)
 {
+	if (debug)
+		printf("Closing socket %d\n", c->socket);
 	closesocket(c->socket);
 	if (c->tx_buf)
 		free(c->tx_buf);
@@ -364,6 +366,8 @@ void tx_append(struct connection *c, const char *str)
 	char	*buf;
 	size_t	len = strlen(str);
 
+	if (debug)
+		printf("TX: %s", str);
 	if ((c->tx_buf_size - c->tx_buf_terminator) < len) {
 		buf = (char *)realloc(c->tx_buf, c->tx_buf_size + len);
 		if (buf == NULL)
@@ -495,7 +499,7 @@ static int do_frequency_set(struct connection *c, enum vfos vfo, uint64_t freq, 
 		rx_freq = current_freq(c, paired_vfo(vfo));
 		tx_freq = freq;
 		if (tx_freq == 0)
-			tx_freq = get_frequency(c->rig);
+			tx_freq = get_frequency(c->rig, vfo);
 		if (rx_freq == 0)
 			rx_freq = tx_freq;
 	}
@@ -509,7 +513,7 @@ static int do_frequency_set(struct connection *c, enum vfos vfo, uint64_t freq, 
 		tx_freq = current_freq(c, paired_vfo(vfo));
 		rx_freq = freq;
 		if (rx_freq == 0)
-			rx_freq = get_frequency(c->rig);
+			rx_freq = get_frequency(c->rig, vfo);
 		if (tx_freq == 0)
 			tx_freq = rx_freq;
 	}
@@ -527,7 +531,7 @@ static int do_frequency_set(struct connection *c, enum vfos vfo, uint64_t freq, 
 		}
 	}
 	else {
-		if (set_frequency(c->rig, freq) == 0) {
+		if (set_frequency(c->rig, vfo, freq) == 0) {
 			save_freq(c, freq, vfo);
 			return 0;
 		}
@@ -580,7 +584,11 @@ void handle_command(struct connection *c, size_t len)
 	buf = strchr(cmdline, '\r');
 	if (buf)
 		*buf = 0;
+	if (debug)
+		printf("RX: %s\n", cmdline);
 	shorten_cmds(cmdline);
+	if (debug)
+		printf("SC: %s\n", cmdline);
 	// Now handle the commands...
 	for (cmd = cmdline; *cmd; cmd++) {
 		switch(*cmd) {
@@ -589,7 +597,11 @@ void handle_command(struct connection *c, size_t len)
 				GET_ARG(cmd);
 				if (sscanf(arg, "%"SCNu64, &u64) != 1)
 					goto fail;
-				if (tx_rprt(c, do_frequency_set(c, vfo, u64, false)) != 0)
+				if (current_freq(c, vfo) == u64)
+					ret = 0;
+				else
+					ret = do_frequency_set(c, vfo, u64, false);
+				if (tx_rprt(c, 0) != 0)
 					goto abort;
 				break;
 			case 'I':
@@ -597,18 +609,22 @@ void handle_command(struct connection *c, size_t len)
 				GET_ARG(cmd);
 				if (sscanf(arg, "%"SCNu64, &u64) != 1)
 					goto fail;
-				if (tx_rprt(c, do_frequency_set(c, paired_vfo(vfo), u64, false)) != 0)
+				if (current_freq(c, paired_vfo(vfo)) == u64)
+					ret = 0;
+				else
+					ret = do_frequency_set(c, paired_vfo(vfo), u64, true);
+				if (tx_rprt(c, 0) != 0)
 					goto abort;
 				break;
 			case 'f':
-				u64 = get_frequency(c->rig);
+				u64 = get_frequency(c->rig, VFO_UNKNOWN);
 				if (u64 == 0)
 					goto fail;
 				tx_printf(c, "%"PRIu64"\n", u64);
 				break;
 			case 'i':
 				vfo = current_vfo(c);
-				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+				ret = get_split_frequency(c->rig, NULL, &tx_freq);
 				if (ret != 0) {
 					tx_freq = current_freq(c, paired_vfo(vfo));
 					if (tx_freq == 0)
@@ -637,7 +653,42 @@ void handle_command(struct connection *c, size_t len)
 				if (mode == MODE_UNKNOWN)
 					goto fail;
 				GET_ARG(cmd);
-				if (tx_rprt(c, set_mode(c->rig, mode)) == 0)
+				if (current_mode(c, vfo) == mode)
+					ret = 0;
+				else
+					ret = set_mode(c->rig, mode);
+				if (tx_rprt(c, ret) == 0)
+					save_mode(c, mode, vfo);
+				else
+					goto abort;
+				break;
+			case 'X':
+				vfo = paired_vfo(current_vfo(c));
+				GET_ARG(cmd);
+				mode = MODE_UNKNOWN;
+				if (strcmp(arg, "USB")==0)
+					mode = MODE_USB;
+				else if (strcmp(arg, "LSB")==0)
+					mode = MODE_LSB;
+				else if (strcmp(arg, "CW")==0)
+					mode = MODE_CW;
+				else if (strcmp(arg, "CWR")==0)
+					mode = MODE_CWR;
+				else if (strcmp(arg, "RTTY")==0)
+					mode = MODE_FSK;
+				else if (strcmp(arg, "AM")==0)
+					mode = MODE_AM;
+				else if (strcmp(arg, "FM")==0)
+					mode = MODE_FM;
+				if (mode == MODE_UNKNOWN)
+					goto fail;
+				GET_ARG(cmd);
+				/* TODO: This matters when setting duplex... */
+				if (current_mode(c, vfo) == mode)
+					ret = 0;
+				else
+					ret = set_mode(c->rig, mode);
+				if (tx_rprt(c, ret) == 0)
 					save_mode(c, mode, vfo);
 				else
 					goto abort;
@@ -688,41 +739,45 @@ void handle_command(struct connection *c, size_t len)
 				if (sscanf(arg, "%d", &i) != 1)
 					goto fail;
 				if (i==0) {
-					u64 = get_frequency(c->rig);
-					if (u64 == 0)
-						tx_append(c, "RPRT -1\n");
-					else {
-						if (tx_rprt(c, set_frequency(c->rig, u64)) != 0)
-							goto abort;
-						c->split = false;
+					if (get_split_frequency(c->rig, NULL, NULL) == 0) {
+						u64 = get_frequency(c->rig, VFO_UNKNOWN);
+						if (u64 == 0)
+							tx_append(c, "RPRT -1\n");
+						else {
+							if (tx_rprt(c, set_frequency(c->rig, VFO_UNKNOWN, u64)) != 0)
+								goto abort;
+							c->split = false;
+						}
 					}
+					else
+						tx_append(c, "RPRT 0\n");
 				}
 				else {
-					// "Enable split"
-					// First, switch to the "other" VFO to get the frequency
-					vfo = current_vfo(c);
-					rx_freq = get_frequency(c->rig);
-					if (rx_freq == 0)
-						goto fail;
-					if (c->rig->set_vfo) {
-						if (set_vfo(c->rig, paired_vfo(vfo)) != 0)
+					if (get_split_frequency(c->rig, NULL, NULL) != 0) {
+						// "Enable split"
+						// First, switch to the "other" VFO to get the frequency
+						vfo = current_vfo(c);
+						rx_freq = get_frequency(c->rig, VFO_UNKNOWN);
+						if (rx_freq == 0)
 							goto fail;
-						tx_freq = get_frequency(c->rig);
-						if (tx_freq == 0)
-							goto fail;
-						// Now switch back
-						if (set_vfo(c->rig, vfo) != 0)
-							goto fail;
+						if (c->rig->set_vfo) {
+							tx_freq = get_frequency(c->rig, paired_vfo(vfo));
+
+							if (tx_freq == 0)
+								goto fail;
+						}
+						else {
+							tx_freq = current_freq(c, paired_vfo(vfo));
+						}
+						// And finally, set the split.
+						c->split = true;
+						if (tx_rprt(c, do_frequency_set(c, paired_vfo(vfo), tx_freq, true)) != 0) {
+							c->split = false;
+							goto abort;
+						}
 					}
-					else {
-						tx_freq = current_freq(c, paired_vfo(vfo));
-					}
-					// And finally, set the split.
-					c->split = true;
-					if (tx_rprt(c, do_frequency_set(c, paired_vfo(vfo), tx_freq, true)) != 0) {
-						c->split = false;
-						goto abort;
-					}
+					else
+						tx_append(c, "RPRT 0\n");
 				}
 				GET_ARG(cmd);
 				break;
@@ -732,13 +787,19 @@ void handle_command(struct connection *c, size_t len)
 					goto fail;
 				break;
 			case 's':
-				ret = get_split_frequency(c->rig, &rx_freq, &tx_freq);
+				ret = get_split_frequency(c->rig, NULL, NULL);
 				vfo = current_vfo(c);
 				if (vfo == VFO_UNKNOWN)
 					goto fail;
 				tx_append(c, ret==0?"1\n":"0\n");
-				if (send_vfo(c, paired_vfo(vfo)) != 0)
-					goto fail;
+				if (ret) {
+					if (send_vfo(c, vfo) != 0)
+						goto fail;
+				}
+				else {
+					if (send_vfo(c, paired_vfo(vfo)) != 0)
+						goto fail;
+				}
 				break;
 			case 'T':
 				GET_ARG(cmd);
@@ -937,11 +998,26 @@ void main_loop(void) {
 					free(c);
 					continue;
 				}
+				if (debug)
+					printf("Accepted new connection %d\n", c->socket);
 				sockopt = 1;
 				setsockopt(c->socket, IPPROTO_TCP, TCP_NODELAY, &sockopt, sizeof(sockopt));
 				c->rig = l->rig;
 				c->next_connection = connections;
 				connections = c;
+				/* Read the current state */
+				c->split = get_split_frequency(c->rig, &c->vfoa_freq, &c->vfob_freq) == 0;
+				if (c->split) {
+					if (get_vfo(c->rig) == VFO_B) {
+						c->vfom_freq = c->vfob_freq;
+						c->vfob_freq = c->vfoa_freq;
+						c->vfoa_freq = c->vfom_freq;
+						c->vfom_freq = 0;
+						c->vfob_mode = get_mode(c->rig);
+					}
+					else
+						c->vfoa_mode = get_mode(c->rig);
+				}
 			}
 		}
 	}

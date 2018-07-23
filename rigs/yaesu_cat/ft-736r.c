@@ -127,7 +127,7 @@ struct rig	*ft736r_init(struct _dictionary_ *d, const char *section)
 	// Force split/duplex off
 	ybc->split_offset = 1;
 	ybc->duplex_rx = 1;
-	if (yaesu_bincat_set_frequency(ybc, 144000000) != 0) {
+	if (yaesu_bincat_set_frequency(ybc, VFO_UNKNOWN, 144000000) != 0) {
 		ft736r_close(ybc);
 		return NULL;
 	}

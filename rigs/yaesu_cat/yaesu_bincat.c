@@ -347,7 +347,7 @@ void yaesu_bincat_setbits(char *array, ...)
 	va_end(bits);
 }
 
-int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq)
+int yaesu_bincat_set_frequency(void *cbdata, enum vfos vfo, uint64_t freq)
 {
 	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
 	struct io_response	*resp;
@@ -366,6 +366,7 @@ int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq)
 			return ENODEV;
 		free(resp);
 	}
+	/* TODO: No VFO control... always set current VFO. */
 	resp = yaesu_bincat_command(ybc, true, Y_BC_CMD_FREQUENCY, freq/10);
 	if (resp == NULL)
 		return ENODEV;
@@ -557,7 +558,7 @@ int yaesu_bincat_set_ptt(void *cbdata, bool tx)
 	return 0;
 }
 
-uint64_t yaesu_bincat_get_frequency(void *cbdata)
+uint64_t yaesu_bincat_get_frequency(void *cbdata, enum vfos vfo)
 {
 	struct yaesu_bincat *ybc = (struct yaesu_bincat *)cbdata;
 
@@ -570,8 +571,10 @@ int yaesu_bincat_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *
 
 	if (ybc->split_offset == 0)
 		return EACCES;
-	*rx_freq = ybc->freq;
-	*tx_freq = ybc->freq + ybc->split_offset;
+	if (rx_freq)
+		*rx_freq = ybc->freq;
+	if (tx_freq)
+		*tx_freq = ybc->freq + ybc->split_offset;
 	return 0;
 }
 

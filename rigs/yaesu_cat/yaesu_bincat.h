@@ -95,10 +95,10 @@ struct io_response *yaesu_bincat_command(struct yaesu_bincat *ybc, bool set, enu
 void yaesu_bincat_free(struct yaesu_bincat *ybc);
 struct yaesu_bincat *yaesu_bincat_new(struct _dictionary_ *d, const char *section);
 
-int yaesu_bincat_set_frequency(void *cbdata, uint64_t freq);
+int yaesu_bincat_set_frequency(void *cbdata, enum vfos vfo, uint64_t freq);
 int yaesu_bincat_set_split_frequency(void *cbdata, uint64_t freq_rx, uint64_t freq_tx);
 int yaesu_bincat_set_duplex(void *cbdata, uint64_t freq_rx, enum rig_modes mode_rx, uint64_t freq_tx, enum rig_modes mode_tx);
-uint64_t yaesu_bincat_get_frequency(void *cbdata);
+uint64_t yaesu_bincat_get_frequency(void *cbdata, enum vfos vfo);
 int yaesu_bincat_get_split_frequency(void *cbdata, uint64_t *rx_freq, uint64_t *tx_freq);
 int yaesu_bincat_get_duplex(void *cbdata, uint64_t *rx_freq, enum rig_modes *rx_mode, uint64_t *tx_freq, enum rig_modes *tx_mode);
 int yaesu_bincat_set_mode(void *ybc, enum rig_modes mode);

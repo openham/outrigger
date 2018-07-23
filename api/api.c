@@ -252,7 +252,7 @@ int close_rig(struct rig *rig)
 	return ret;
 }
 
-int set_frequency(struct rig *rig, uint64_t freq)
+int set_frequency(struct rig *rig, enum vfos vfo, uint64_t freq)
 {
 	if (rig == NULL)
 		return EINVAL;
@@ -260,7 +260,7 @@ int set_frequency(struct rig *rig, uint64_t freq)
 		return ENOTSUP;
 	if (find_bandlimit_by_freq(rig, freq, false) == NULL)
 		return EINVAL;
-	return rig->set_frequency(rig->cbdata, freq);
+	return rig->set_frequency(rig->cbdata, vfo, freq);
 }
 
 int set_split_frequency(struct rig *rig, uint64_t freq_rx, uint64_t freq_tx)
@@ -289,18 +289,18 @@ int set_duplex(struct rig *rig, uint64_t freq_rx, enum rig_modes mode_rx, uint64
 	return rig->set_duplex(rig->cbdata, freq_rx, mode_rx, freq_tx, mode_tx);
 }
 
-uint64_t get_frequency(struct rig *rig)
+uint64_t get_frequency(struct rig *rig, enum vfos vfo)
 {
 	if (rig == NULL)
 		return 0;
 	if (rig->get_frequency == NULL)
 		return 0;
-	return rig->get_frequency(rig->cbdata);
+	return rig->get_frequency(rig->cbdata, vfo);
 }
 
 int get_split_frequency(struct rig *rig, uint64_t *freq_rx, uint64_t *freq_tx)
 {
-	if (rig == NULL || freq_rx == NULL || freq_tx == NULL)
+	if (rig == NULL)
 		return EINVAL;
 	if (rig->get_split_frequency == NULL)
 		return ENOTSUP;
