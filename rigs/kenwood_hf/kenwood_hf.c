@@ -430,7 +430,6 @@ static int kenwood_send(struct kenwood_hf *khf, const char *cmd, size_t wlen)
 		ms_sleep((unsigned)(khf->last_cmd_tick + khf->inter_cmd_delay + khf->additional_intercmd_delay - now));
 	khf->last_cmd_tick = ms_ticks();
 	khf->additional_intercmd_delay = 0;
-printf("%" PRIu64 ": Sending %.*s\n", now, (int)wlen, cmd);
 	return io_write(khf->handle, cmd, wlen, khf->char_timeout);
 }
 
